@@ -60,7 +60,7 @@ function register_boons() {
 			trigger:         { key: 'boon-trigger',         type: 'dropdown',   value: 'trigger',         options: triggers, translation_path: 'dc.triggers', label: 'Trigger' },
 			shopkeeper_name:  { key: 'boon-shopkeeper_name', type: 'text',       value: 'shopkeeper_name',  label: 'Shopkeeper Name' },
 			haggle_tn:        { key: 'boon-haggle_tn',       type: 'number',     value: 'haggle_tn',        label: 'Haggle TN' },
-			sell_ratio:       { key: 'boon-sell_ratio',      type: 'number',     value: 'sell_ratio',       label: 'Sell Ratio' },
+			sell_ratio:       { key: 'boon-sell_ratio',      type: 'number',     value: 'sell_ratio',       label: 'Sell Ratio', step: 0.05 },
 			enable_cash:      { key: 'boon-enable_cash',     type: 'checkbox',   value: 'enable_cash',       label: 'Enable Cash' },
 			cash:             { key: 'boon-cash',            type: 'number',     value: 'cash',             label: 'Merchant Cash (-1 = unlimited)' },
 			stock:            { key: 'boon-stock',           type: 'shop_stock', value: 'stock',            label: 'Shop Stock' },
