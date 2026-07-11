@@ -19,7 +19,7 @@ const DEFAULT_SHOP = {
 import { barter } from "./barter.js";
 
 function parse_sell_ratio(value) {
-	if (value == null || value === "") {
+	if (value == null || value === "" || value <= 0) {
 		return 0.5;
 	}
 	const n = Number(value);

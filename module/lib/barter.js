@@ -102,16 +102,12 @@ function build_player_inventory(buyer, customer, shop_data) {
 			continue;
 		}
 		const catalog = get_catalog_item(path);
-		const sell_price = get_sell_price(path, customer, shop_data, gear);
-		if (sell_price === 0) {
-			console.log('smith-and-robards | sell_price=0', { path, gear_cost: gear?.cost, catalog_cost: catalog?.cost, sell_ratio: shop_data?.sell_ratio, piece_cost: get_piece_cost(path, gear) });
-		}
 		rows.push({
 			path,
 			label: gear.label || catalog?.label || path,
 			count,
 			unit_qty: get_item_unit_qty(path, gear),
-			sell_price
+			sell_price: get_sell_price(path, customer, shop_data, gear)
 		});
 	}
 	rows.sort((a, b) => a.label.localeCompare(b.label));
