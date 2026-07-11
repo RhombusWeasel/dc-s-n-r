@@ -56,17 +56,16 @@
   <div class="center shop-balance {{#if balanced}}shop-balance-ok{{else}}shop-balance-bad{{/if}}">
     {{#if balanced}}
     {{localize "dc.shop.balanced"}}
+    {{else if enable_cash}}
+    <a class="fas fa-coins shop-auto-balance" data-action="autoBalance" title="{{localize "dc.shop.auto_balance_hint"}}">
+      {{localize "dc.shop.auto_balance"}} ({{format_currency balance_diff}})
+    </a>
     {{else}}
     {{localize "dc.shop.unbalanced"}} ({{format_currency balance_diff}})
     {{/if}}
   </div>
 
   <div class="center shop-trade-buttons">
-    {{#if enable_cash}}
-    <a class="fas fa-coins shop-auto-balance" data-action="autoBalance" title="{{localize "dc.shop.auto_balance_hint"}}">
-      {{localize "dc.shop.auto_balance"}}
-    </a>
-    {{/if}}
     <button type="button" data-action="acceptTrade" {{#unless can_accept}}disabled{{/unless}}>
       {{localize "dc.shop.accept"}}
     </button>
