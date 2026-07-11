@@ -119,3 +119,18 @@
 .deadlands-classic .shop-catalog-gm {
 	max-height: 100%;
 }
+
+/* Shop stock field type in boon editor */
+.deadlands-classic .shop-stock-editor .shop-stock-summary {
+	font-style: italic;
+	margin-bottom: 4px;
+}
+.deadlands-classic .shop-stock-editor .shop-stock-tree .shop-gm-table {
+	width: 100%;
+}
+.deadlands-classic .shop-stock-editor .toggle-path {
+	cursor: pointer;
+}
+.deadlands-classic .shop-stock-editor .shop-supply-input:disabled {
+	opacity: 0.4;
+}

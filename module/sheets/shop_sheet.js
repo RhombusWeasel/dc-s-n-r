@@ -29,26 +29,36 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		},
 	};
 
-	static show(shop_actor, options = {}) {
-		const sheet = new NpcShopSheet(shop_actor, options);
+	/**
+	 * Show the shop sheet.
+	 * @param {object} shop_data — boon shop config { shopkeeper_name, haggle_tn, sell_ratio, cash, stock }
+	 * @param {string} shop_id — region behavior UUID (unique identifier for this shop)
+	 * @param {string} scene_id — scene ID for customer data lookups
+	 * @param {object} options — { buyer_id }
+	 */
+	static show(shop_data, shop_id, scene_id, options = {}) {
+		const sheet = new NpcShopSheet(shop_data, shop_id, scene_id, options);
 		set_open_sheet(sheet);
 		sheet.render(true);
 
-		// For non-GM players, request shop data from the GM
+		// For non-GM players, request fresh shop data from the GM
 		if (!game.user.isGM) {
 			const buyer_id = options.buyer_id
 				|| game.user.character?.id
 				|| shop.get_owned_characters()[0]?.id
 				|| "";
-			shop.emit_open_shop(shop_actor.id, buyer_id);
+			shop.emit_request_shop_data(shop_id, buyer_id, scene_id);
 		}
 
 		return sheet;
 	}
 
-	constructor(shop_actor, options = {}) {
-		super({ window: { title: shop_actor.name } });
-		this.shop_actor = shop_actor;
+	constructor(shop_data, shop_id, scene_id, options = {}) {
+		const shopkeeper_name = shop_data?.shopkeeper_name || "Shop";
+		super({ window: { title: shopkeeper_name } });
+		this.shop_id = shop_id;
+		this.scene_id = scene_id;
+		this.shopkeeper_name = shopkeeper_name;
 		this.buyer_id = options.buyer_id
 			|| game.user.character?.id
 			|| shop.get_owned_characters()[0]?.id
@@ -58,11 +68,13 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 
 	get shop_data() {
 		if (game.user.isGM) {
-			return shop.normalize_shop(this.shop_actor.system.shop || shop.default_shop());
+			// GM reads from the boon on the region behavior
+			// (stored when the sheet was opened — may need refresh)
+			return this._current_shop_data || shop.normalize_shop({});
 		}
 		// Player: read from socket cache
-		const cached = shop.get_cached_shop_data(this.shop_actor.id);
-		return cached ? cached.shop : shop.default_shop();
+		const cached = shop.get_cached_shop_data(this.shop_id);
+		return cached ? cached.shop : shop.normalize_shop({});
 	}
 
 	get buyer() {
@@ -72,26 +84,49 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
+		// GM: read shop data from the boon on the region behavior
+		if (game.user.isGM) {
+			const behavior = await fromUuid(this.shop_id);
+			const boons = foundry.utils.getProperty(behavior, "system.boons") || [];
+			const boon = boons.find(b => b.type === "open_shop");
+			if (boon) {
+				this._current_shop_data = shop.normalize_shop({
+					haggle_tn: boon.haggle_tn,
+					sell_ratio: boon.sell_ratio,
+					cash: boon.cash,
+					stock: boon.stock,
+				});
+			}
+		}
+
 		// Player: check if shop data has been received from GM yet
 		if (!game.user.isGM) {
-			const cached = shop.get_cached_shop_data(this.shop_actor.id);
+			const cached = shop.get_cached_shop_data(this.shop_id);
 			if (!cached) {
 				// Loading state — data not yet received from GM
 				context.loading = true;
-				context.shop_name = this.shop_actor.name;
+				context.shop_name = this.shopkeeper_name;
 				return context;
 			}
 		}
 
 		const buyer = this.buyer;
-		const customer = game.user.isGM
-			? (buyer ? shop.get_customer(this.shop_data, buyer.id) : { opinion: 0, price_modifier_pct: 0 })
-			: (shop.get_cached_shop_data(this.shop_actor.id)?.customer || { opinion: 0, price_modifier_pct: 0 });
+		const scene = game.scenes.get(this.scene_id);
 
-		const balance = barter.calc_balance(this.trade, buyer, this.shop_data, customer);
+		let customer;
+		if (game.user.isGM) {
+			customer = buyer
+				? await shop.get_customer(scene, this.shop_id, buyer.id)
+				: { opinion: 0, price_modifier_pct: 0 };
+		} else {
+			customer = shop.get_cached_shop_data(this.shop_id)?.customer || { opinion: 0, price_modifier_pct: 0 };
+		}
 
-		context.shop_name = this.shop_actor.name;
-		context.shop_id = this.shop_actor.id;
+		const shop_data = this.shop_data;
+		const balance = barter.calc_balance(this.trade, buyer, shop_data, customer);
+
+		context.shop_name = this.shopkeeper_name;
+		context.shop_id = this.shop_id;
 		context.buyer_id = this.buyer_id;
 		context.buyers = shop.get_owned_characters().map(a => ({
 			id: a.id,
@@ -99,18 +134,20 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 			selected: a.id === this.buyer_id
 		}));
 		context.player_cash = buyer?.system.char.cash ?? 0;
-		context.merchant_cash = this.shop_data.cash ?? -1;
+		context.merchant_cash = shop_data.cash ?? -1;
 		context.price_modifier_pct = customer.price_modifier_pct ?? 0;
 		context.opinion = customer.opinion ?? 0;
-		context.haggle_tn = this.shop_data.haggle_tn ?? 5;
-		context.player_items = barter.build_player_inventory(buyer, customer, this.shop_data);
-		context.merchant_items = barter.build_merchant_inventory(this.shop_data, customer);
+		context.haggle_tn = shop_data.haggle_tn ?? 5;
+		context.player_items = barter.build_player_inventory(buyer, customer, shop_data);
+		context.merchant_items = barter.build_merchant_inventory(shop_data, customer);
 		context.trade_player = balance.player;
 		context.trade_merchant = balance.merchant;
 		context.balanced = balance.balanced;
 		context.balance_diff = Math.abs(balance.diff);
 		context.can_accept = balance.balanced && !balance.errors.includes("empty_trade");
 		context.has_buyer = !!buyer;
+		this._current_customer = customer;
+		this._current_shop_data = shop_data;
 		return context;
 	}
 
@@ -197,13 +234,16 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		if (!buyer) {
 			return;
 		}
-		const balance = barter.calc_balance(this.trade, buyer, this.shop_data, shop.get_customer(this.shop_data, buyer.id));
+		const customer = this._current_customer || { opinion: 0, price_modifier_pct: 0 };
+		const shop_data = this._current_shop_data || this.shop_data;
+		const balance = barter.calc_balance(this.trade, buyer, shop_data, customer);
 		if (!balance.balanced || balance.errors.includes("empty_trade")) {
 			ui.notifications.warn(game.i18n.localize("dc.shop.errors.unbalanced"));
 			return;
 		}
 		void shop.request_trade({
-			shop_id: this.shop_actor.id,
+			shop_id: this.shop_id,
+			scene_id: this.scene_id,
 			buyer_id: buyer.id,
 			trade: foundry.utils.deepClone(this.trade),
 			user_id: game.user.id
@@ -246,7 +286,8 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		});
 		game.dc.msg.chat(haggle_html, ChatMessage.getSpeaker({ actor: buyer }));
 		shop.emit("haggle", {
-			shop_id: this.shop_actor.id,
+			shop_id: this.shop_id,
+			scene_id: this.scene_id,
 			buyer_id: buyer.id,
 			success: r_data.success,
 			raises: r_data.raises,
