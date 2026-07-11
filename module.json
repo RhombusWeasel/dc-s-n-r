@@ -1,42 +1,43 @@
 {
-	"id": "smith-and-robards",
-	"title": "Smith & Robards Shop",
-	"description": "Shop and barter system for Deadlands Classic. Extracted from the Deadlands-Classic system as a standalone module.",
-	"version": "1.0.0",
-	"compatibility": {
-		"minimum": "14",
-		"verified": "14",
-		"maximum": "14"
-	},
-	"authors": [
-		{
-			"name": "RhombusWeasel"
-		}
-	],
-	"esmodules": [
-		"module/main.js"
-	],
-	"styles": [
-		"styles/smith-and-robards.css"
-	],
-	"languages": [
-		{
-			"lang": "en",
-			"name": "English",
-			"path": "lang/en.json"
-		}
-	],
-	"socket": true,
-	"relationships": {
-		"systems": [
-			{
-				"id": "Deadlands-Classic",
-				"type": "system",
-				"compatibility": {
-					"minimum": "14",
-					"verified": "14"
-				}
-			}
-		]
-	}
+  "id": "smith-and-robards",
+  "title": "Deadlands Classic — Smith & Robards Shop",
+  "description": "Shop and barter module for the Deadlands Classic system. Extracted from the system as a standalone module. Uses the boon system for shop regions — add an 'open_shop' boon to a region to open the shop sheet when a player enters.",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "RhombusWeasel"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "socket": true,
+  "esmodules": [
+    "module/main.js"
+  ],
+  "styles": [
+    "styles/smith-and-robards.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "Deadlands-Classic",
+        "type": "system",
+        "compatibility": {
+          "minimum": "0.1.0"
+        }
+      }
+    ]
+  },
+  "url": "",
+  "manifest": "",
+  "download": ""
 }
