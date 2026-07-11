@@ -59,6 +59,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		this.shop_id = shop_id;
 		this.scene_id = scene_id;
 		this.shopkeeper_name = shopkeeper_name;
+		this._boon_shop_data = shop_data;
 		this.buyer_id = options.buyer_id
 			|| game.user.character?.id
 			|| shop.get_owned_characters()[0]?.id
@@ -68,13 +69,12 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 
 	get shop_data() {
 		if (game.user.isGM) {
-			// GM reads from the boon on the region behavior
-			// (stored when the sheet was opened — may need refresh)
-			return this._current_shop_data || shop.normalize_shop({});
+			return this._current_shop_data || shop.normalize_shop(this._boon_shop_data || {});
 		}
-		// Player: read from socket cache
+		// Player: prefer socket cache (has customer-driven updates), fall back to boon data
 		const cached = shop.get_cached_shop_data(this.shop_id);
-		return cached ? cached.shop : shop.normalize_shop({});
+		if (cached?.shop) return cached.shop;
+		return shop.normalize_shop(this._boon_shop_data || {});
 	}
 
 	get buyer() {
@@ -99,16 +99,8 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 			}
 		}
 
-		// Player: check if shop data has been received from GM yet
-		if (!game.user.isGM) {
-			const cached = shop.get_cached_shop_data(this.shop_id);
-			if (!cached) {
-				// Loading state — data not yet received from GM
-				context.loading = true;
-				context.shop_name = this.shopkeeper_name;
-				return context;
-			}
-		}
+		// Player: use boon data as primary source; socket cache for customer updates
+		// (boon data was passed to constructor when the sheet was opened)
 
 		const buyer = this.buyer;
 		const scene = game.scenes.get(this.scene_id);
