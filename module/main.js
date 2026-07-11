@@ -25,6 +25,12 @@ Hooks.once("init", () => {
 		"modules/smith-and-robards/templates/partials/shop_barter_trade.hbs",
 		"modules/smith-and-robards/templates/partials/shop_category.hbs",
 	]);
+
+	game.settings.register(MODULE_ID, "dcshop-region-migrated", {
+		scope: "world",
+		config: false,
+		default: false,
+	});
 });
 
 // ─── dcReady: register everything ─────────────────────────────────────────
@@ -112,23 +118,7 @@ function _register_npc_interception() {
 // ─── dcShop region behavior migration ─────────────────────────────────────
 
 async function _migrate_dcshop_regions() {
-	const migration_flag = "dcshop-region-migrated";
-	const settings_key = `${MODULE_ID}.${migration_flag}`;
-
-	if (game.settings.get(MODULE_ID, migration_flag)) return;
-
-	// Register setting if not yet registered
-	try {
-		game.settings.register(MODULE_ID, migration_flag, {
-			scope: "world",
-			config: false,
-			default: false,
-		});
-	} catch (e) {
-		// Already registered
-	}
-
-	if (game.settings.get(MODULE_ID, migration_flag)) return;
+	if (game.settings.get(MODULE_ID, "dcshop-region-migrated")) return;
 
 	for (const scene of game.scenes) {
 		for (const region of scene.regions) {
@@ -157,6 +147,6 @@ async function _migrate_dcshop_regions() {
 		}
 	}
 
-	await game.settings.set(MODULE_ID, migration_flag, true);
+	await game.settings.set(MODULE_ID, "dcshop-region-migrated", true);
 	console.log("Smith & Robards | dcShop region migration complete.");
 }
