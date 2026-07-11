@@ -28,6 +28,7 @@ function normalize_shop(shop = {}) {
 		enabled: shop.enabled ?? true,
 		haggle_tn: shop.haggle_tn ?? 5,
 		sell_ratio: parse_sell_ratio(shop.sell_ratio),
+		enable_cash: shop.enable_cash ?? true,
 		cash: shop.cash ?? -1,
 		stock: shop.stock ? { ...shop.stock } : {},
 	};
@@ -314,6 +315,7 @@ async function handle_request_shop_data(data) {
 	const shop = normalize_shop({
 		haggle_tn: boon.haggle_tn,
 		sell_ratio: boon.sell_ratio,
+		enable_cash: boon.enable_cash,
 		cash: boon.cash,
 		stock: boon.stock,
 	});

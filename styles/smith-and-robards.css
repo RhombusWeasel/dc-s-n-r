@@ -53,9 +53,23 @@
 	margin: 0.35rem 0;
 }
 
-.deadlands-classic .shop-trade-cash-input {
-	width: 5rem;
-	text-align: right;
+.deadlands-classic .shop-trade-cash-value {
+	font-weight: bold;
+}
+
+.deadlands-classic .shop-auto-balance {
+	cursor: pointer;
+	padding: 4px 12px;
+	border: 1px solid var(--dc-border, #888);
+	border-radius: 3px;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.deadlands-classic .shop-auto-balance:hover {
+	background: rgba(255, 255, 255, 0.1);
 }
 
 .deadlands-classic .shop-balance {

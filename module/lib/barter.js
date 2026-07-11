@@ -166,6 +166,11 @@ function calc_side_total(side, side_name, customer, shop_data, buyer = null) {
 
 function calc_balance(trade, buyer, shop_data, customer) {
 	const normalized = normalize_trade(trade);
+	// When cash is disabled, ignore any cash values
+	if (shop_data && shop_data.enable_cash === false) {
+		normalized.player.cash = 0;
+		normalized.merchant.cash = 0;
+	}
 	const player = calc_side_total(normalized.player, "player", customer, shop_data, buyer);
 	const merchant = calc_side_total(normalized.merchant, "merchant", customer, shop_data, buyer);
 	const balanced = player.total === merchant.total;
@@ -225,6 +230,43 @@ function remove_trade_item(trade, side, path) {
 function set_trade_cash(trade, side, value) {
 	const next = normalize_trade(trade);
 	next[side].cash = Math.max(0, value);
+	return next;
+}
+
+/**
+ * Auto-balance the trade by adding cash to the side that's short.
+ * If player total < merchant total, player needs to add cash.
+ * If merchant total < player total, merchant needs to add cash.
+ * If already balanced, no change.
+ * Returns a new trade object with cash adjusted.
+ */
+function auto_balance_cash(trade, buyer, shop_data, customer) {
+	const balance = calc_balance(trade, buyer, shop_data, customer);
+	const next = normalize_trade(trade);
+
+	if (balance.balanced) {
+		return next;
+	}
+
+	const diff = balance.diff; // player.total - merchant.total
+
+	if (diff < 0) {
+		// Player is short — player needs to add cash
+		next.player.cash = Math.max(0, -diff);
+		next.merchant.cash = 0;
+	} else {
+		// Merchant is short — merchant needs to add cash
+		// Only do this if shop has cash (not -1 unlimited)
+		const merchant_cash = shop_data.cash ?? -1;
+		if (merchant_cash !== -1 && diff > merchant_cash) {
+			next.merchant.cash = merchant_cash;
+			next.player.cash = Math.max(0, diff - merchant_cash);
+		} else {
+			next.merchant.cash = Math.max(0, diff);
+			next.player.cash = 0;
+		}
+	}
+
 	return next;
 }
 
@@ -332,6 +374,7 @@ async function apply_trade(buyer_id, shop_id, scene_id, trade) {
 	const shop_data = shop.normalize_shop({
 		haggle_tn: boon.haggle_tn,
 		sell_ratio: boon.sell_ratio,
+		enable_cash: boon.enable_cash,
 		cash: boon.cash,
 		stock: boon.stock,
 	});
@@ -408,6 +451,7 @@ const barter = {
 	add_trade_item,
 	remove_trade_item,
 	set_trade_cash,
+	auto_balance_cash,
 	validate_trade,
 	apply_trade
 };

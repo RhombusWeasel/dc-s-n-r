@@ -55,6 +55,7 @@ Hooks.once("dcReady", () => {
 			const shop_data = shop.normalize_shop({
 				haggle_tn: shop_boon.haggle_tn,
 				sell_ratio: shop_boon.sell_ratio,
+				enable_cash: shop_boon.enable_cash,
 				cash: shop_boon.cash,
 				stock: shop_boon.stock,
 			});

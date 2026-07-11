@@ -93,6 +93,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 				this._current_shop_data = shop.normalize_shop({
 					haggle_tn: boon.haggle_tn,
 					sell_ratio: boon.sell_ratio,
+					enable_cash: boon.enable_cash,
 					cash: boon.cash,
 					stock: boon.stock,
 				});
@@ -127,6 +128,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		}));
 		context.player_cash = buyer?.system.char.cash ?? 0;
 		context.merchant_cash = shop_data.cash ?? -1;
+		context.enable_cash = shop_data.enable_cash ?? true;
 		context.price_modifier_pct = customer.price_modifier_pct ?? 0;
 		context.opinion = customer.opinion ?? 0;
 		context.haggle_tn = shop_data.haggle_tn ?? 5;
@@ -157,6 +159,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 			removeTradeItem: this._on_remove_trade_item,
 			acceptTrade: this._on_accept_trade,
 			clearTrade: this._on_clear_trade,
+			autoBalance: this._on_auto_balance,
 			haggle: this._on_haggle,
 			close: this._on_close,
 		};
@@ -171,15 +174,6 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 			this.trade = barter.empty_trade();
 			this.render(true);
 			return;
-		}
-		if (target.classList.contains("shop-trade-cash-input")) {
-			const side = target.dataset.side;
-			const value = parseInt(target.value, 10);
-			if (!side || isNaN(value) || value < 0) {
-				return;
-			}
-			this.trade = barter.set_trade_cash(this.trade, side, value);
-			this.render(true);
 		}
 	}
 
@@ -244,6 +238,16 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 
 	_on_clear_trade() {
 		this.trade = barter.empty_trade();
+		this.render(true);
+	}
+
+	_on_auto_balance(event, target) {
+		event.preventDefault();
+		const buyer = this.buyer;
+		if (!buyer) return;
+		const customer = this._current_customer || { opinion: 0, price_modifier_pct: 0 };
+		const shop_data = this._current_shop_data || this.shop_data;
+		this.trade = barter.auto_balance_cash(this.trade, buyer, shop_data, customer);
 		this.render(true);
 	}
 

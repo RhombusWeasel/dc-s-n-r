@@ -18,10 +18,12 @@
     {{else}}
     <p class="center typed-small">—</p>
     {{/if}}
+    {{#if enable_cash}}
     <div class="shop-trade-cash flexrow">
       <label>{{localize "dc.shop.cash"}}</label>
-      <input type="number" class="shop-trade-cash-input" data-side="player" value="{{trade_player.cash}}" min="0" />
+      <span class="shop-trade-cash-value" data-side="player">{{format_currency trade_player.cash}}</span>
     </div>
+    {{/if}}
     <div class="right typed-small">{{localize "dc.shop.total"}}: {{format_currency trade_player.total}}</div>
   </div>
 
@@ -42,10 +44,12 @@
     {{else}}
     <p class="center typed-small">—</p>
     {{/if}}
+    {{#if enable_cash}}
     <div class="shop-trade-cash flexrow">
       <label>{{localize "dc.shop.cash"}}</label>
-      <input type="number" class="shop-trade-cash-input" data-side="merchant" value="{{trade_merchant.cash}}" min="0" />
+      <span class="shop-trade-cash-value" data-side="merchant">{{format_currency trade_merchant.cash}}</span>
     </div>
+    {{/if}}
     <div class="right typed-small">{{localize "dc.shop.total"}}: {{format_currency trade_merchant.total}}</div>
   </div>
 
@@ -58,6 +62,11 @@
   </div>
 
   <div class="center shop-trade-buttons">
+    {{#if enable_cash}}
+    <a class="fas fa-coins shop-auto-balance" data-action="autoBalance" title="{{localize "dc.shop.auto_balance_hint"}}">
+      {{localize "dc.shop.auto_balance"}}
+    </a>
+    {{/if}}
     <button type="button" data-action="acceptTrade" {{#unless can_accept}}disabled{{/unless}}>
       {{localize "dc.shop.accept"}}
     </button>
