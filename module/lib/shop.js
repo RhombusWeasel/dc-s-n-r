@@ -11,9 +11,12 @@ const DEFAULT_SHOP = {
 	enabled: true,
 	haggle_tn: 5,
 	sell_ratio: 0.5,
+	enable_cash: true,
 	cash: -1,
 	stock: {},
 };
+
+import { barter } from "./barter.js";
 
 function parse_sell_ratio(value) {
 	if (value == null || value === "") {
@@ -473,7 +476,7 @@ function refresh_open_shop_sheet(shop_id) {
 	if (!sheet || sheet.shop_id !== shop_id) {
 		return;
 	}
-	sheet.trade = game.dc.barter.empty_trade();
+	sheet.trade = barter.empty_trade();
 	sheet.render(true);
 }
 
@@ -481,7 +484,7 @@ async function apply_trade_request(data) {
 	if (!game.user.isGM) {
 		return { ok: false, error: "missing_actor" };
 	}
-	const result = await game.dc.barter.apply_trade(
+	const result = await barter.apply_trade(
 		data.buyer_id,
 		data.shop_id,
 		data.scene_id,
