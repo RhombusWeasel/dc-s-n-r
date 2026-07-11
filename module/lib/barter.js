@@ -241,22 +241,34 @@ function set_trade_cash(trade, side, value) {
  * Returns a new trade object with cash adjusted.
  */
 function auto_balance_cash(trade, buyer, shop_data, customer) {
-	const balance = calc_balance(trade, buyer, shop_data, customer);
 	const next = normalize_trade(trade);
 
-	if (balance.balanced) {
+	if (shop_data && shop_data.enable_cash === false) {
+		next.player.cash = 0;
+		next.merchant.cash = 0;
 		return next;
 	}
 
-	const diff = balance.diff; // player.total - merchant.total
+	// Calculate the balance from items only (excluding current cash)
+	const items_only = normalize_trade(trade);
+	items_only.player.cash = 0;
+	items_only.merchant.cash = 0;
+	const balance = calc_balance(items_only, buyer, shop_data, customer);
+
+	if (balance.balanced) {
+		next.player.cash = 0;
+		next.merchant.cash = 0;
+		return next;
+	}
+
+	const diff = balance.diff; // player.items - merchant.items
 
 	if (diff < 0) {
-		// Player is short — player needs to add cash
+		// Player's items are worth less — player needs to add cash
 		next.player.cash = Math.max(0, -diff);
 		next.merchant.cash = 0;
 	} else {
-		// Merchant is short — merchant needs to add cash
-		// Only do this if shop has cash (not -1 unlimited)
+		// Merchant's items are worth less — merchant needs to add cash
 		const merchant_cash = shop_data.cash ?? -1;
 		if (merchant_cash !== -1 && diff > merchant_cash) {
 			next.merchant.cash = merchant_cash;
