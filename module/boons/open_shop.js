@@ -27,7 +27,7 @@ export default function open_shop_boon(boon, context) {
 	// Determine the shop ID from the region behavior UUID
 	// (passed via context if available, otherwise use region.id as fallback)
 	const shop_id = context.behavior_uuid || context.behavior?.uuid || region.id;
-	console.log('smith-and-robards | open_shop_boon', { shop_id, behavior_uuid: context.behavior_uuid, region_id: region.id });
+	console.log('smith-and-robards | open_shop_boon', { shop_id, behavior_uuid: context.behavior_uuid, debug: context._debug_parent_uuid, this_uuid: context._debug_this_uuid, this_id: context._debug_this_id, parent_name: context._debug_parent_name, region_id: region.id });
 
 	shop.open_shop_sheet(shop_data, shop_id, scene, actor);
 }
