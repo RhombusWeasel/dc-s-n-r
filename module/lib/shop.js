@@ -1,6 +1,3 @@
-import { roll_combat } from "./roll_combat.js";
-import { gear_catalog } from "./gear_catalog.js";
-import { socket_utils } from "./socket.js";
 
 const DEFAULT_SHOP = {
 	enabled: true,
@@ -44,7 +41,7 @@ function migrate_old_shop(old_shop = {}) {
 	};
 
 	if (Array.isArray(old_shop.excluded) || (old_shop.supply && !old_shop.stock)) {
-		for (const entry of gear_catalog.iterate_catalog()) {
+		for (const entry of game.dc.gear_catalog.iterate_catalog()) {
 			if (old_shop.excluded?.includes(entry.path)) {
 				continue;
 			}
@@ -58,7 +55,7 @@ function migrate_old_shop(old_shop = {}) {
 		return { enabled: old_shop.enabled ?? true, haggle_tn, sell_ratio: old_shop.sell_ratio ?? 0.5, cash: old_shop.cash ?? -1, stock: {}, customers };
 	}
 
-	for (const entry of gear_catalog.iterate_catalog()) {
+	for (const entry of game.dc.gear_catalog.iterate_catalog()) {
 		const existing = game.dc.utils.data_from_path(raw_stock, entry.path);
 		if (!existing || typeof existing !== "object") {
 			continue;
@@ -142,7 +139,7 @@ function set_supply(shop, path, value) {
 }
 
 function get_catalog_item(path) {
-	return gear_catalog.get_catalog_item(path);
+	return game.dc.gear_catalog.get_catalog_item(path);
 }
 
 function get_customer(shop, customer_id) {
@@ -164,7 +161,7 @@ function calc_price(base_cost, customer) {
 }
 
 async function evaluate_haggle(roll, tn) {
-	return roll_combat.evaluate_ex_roll(roll, tn);
+	return game.dc.roll_combat.evaluate_ex_roll(roll, tn);
 }
 
 function apply_haggle(customer, success, raises) {
@@ -206,7 +203,7 @@ function build_catalog_context(shop = {}) {
 		goods: [],
 		services: []
 	};
-	for (const entry of gear_catalog.iterate_catalog()) {
+	for (const entry of game.dc.gear_catalog.iterate_catalog()) {
 		const for_sale = is_for_sale(normalized, entry.path);
 		sections[entry.category].push({
 			path: entry.path,
@@ -238,7 +235,7 @@ function build_customers_context(customers = {}) {
 function build_player_catalog(shop = {}, customer) {
 	const normalized = normalize_shop(shop);
 	const sections = {};
-	for (const entry of gear_catalog.iterate_catalog()) {
+	for (const entry of game.dc.gear_catalog.iterate_catalog()) {
 		if (!is_for_sale(normalized, entry.path)) {
 			continue;
 		}
