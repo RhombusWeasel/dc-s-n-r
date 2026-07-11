@@ -127,18 +127,25 @@ function _format_currency(value) {
 function extract(field, element, boon_data) {
 	const stock = {};
 
-	// Read all toggle links
+	if (!element) {
+		console.warn("shop_stock.extract: element is null");
+		return stock;
+	}
+
+	// Read all toggle links — any item with fa-check is for sale
 	const toggles = element.querySelectorAll(".toggle-path");
 	for (const toggle of toggles) {
 		const path = toggle.dataset.path;
 		if (!path) continue;
 		const is_for_sale = toggle.classList.contains("fa-check");
 		if (is_for_sale) {
-			// Read the supply from the sibling input
 			const row = toggle.closest("tr");
 			const input = row?.querySelector(".shop-supply-input");
-			const supply = input ? parseInt(input.value, 10) : -1;
-			game.dc.utils.modify_path(stock, path, { supply: isNaN(supply) ? -1 : supply });
+			let supply = input ? parseInt(input.value, 10) : -1;
+			if (isNaN(supply)) supply = -1;
+			// Supply 0 means "not for sale" — default to -1 (unlimited) if 0
+			if (supply === 0) supply = -1;
+			game.dc.utils.modify_path(stock, path, { supply });
 		}
 	}
 
@@ -173,9 +180,9 @@ function on_render(field, container, boon_data, re_render) {
 			const row = toggle.closest("tr");
 			const input = row?.querySelector(".shop-supply-input");
 			if (input) {
-				input.disabled = !is_for_sale; // toggle: if was for_sale, now disabled
-				if (is_for_sale && input.value === "0") {
-					input.value = "-1";
+				input.disabled = is_for_sale; // was for_sale → now disabled
+				if (!is_for_sale && input.value === "0") {
+					input.value = "-1"; // default to unlimited when enabling
 				}
 			}
 
