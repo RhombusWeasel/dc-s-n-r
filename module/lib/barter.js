@@ -373,6 +373,7 @@ async function apply_trade(buyer_id, shop_id, scene_id, trade) {
 
 	// Read shop data from the boon on the region behavior
 	const behavior = await fromUuid(shop_id);
+	console.log('smith-and-robards | apply_trade fromUuid', { shop_id, found: !!behavior, behavior_type: behavior?.type });
 	if (!behavior) {
 		return { ok: false, error: "missing_shop" };
 	}
