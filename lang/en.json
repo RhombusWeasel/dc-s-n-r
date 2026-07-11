@@ -1,5 +1,6 @@
 {
-	"dc.shop.accept": "Accept",
+	"dc.shop.auto_balance": "Auto-Balance Cash",
+	"dc.shop.auto_balance_hint": "Calculate cash needed to balance the trade",
 	"dc.shop.add_to_trade": "Add to trade",
 	"dc.shop.balance": "Balance",
 	"dc.shop.balanced": "Balanced",

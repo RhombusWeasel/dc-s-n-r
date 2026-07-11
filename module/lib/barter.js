@@ -166,6 +166,11 @@ function calc_side_total(side, side_name, customer, shop_data, buyer = null) {
 
 function calc_balance(trade, buyer, shop_data, customer) {
 	const normalized = normalize_trade(trade);
+	// When cash is disabled, ignore any cash values
+	if (shop_data && shop_data.enable_cash === false) {
+		normalized.player.cash = 0;
+		normalized.merchant.cash = 0;
+	}
 	const player = calc_side_total(normalized.player, "player", customer, shop_data, buyer);
 	const merchant = calc_side_total(normalized.merchant, "merchant", customer, shop_data, buyer);
 	const balanced = player.total === merchant.total;
@@ -228,12 +233,59 @@ function set_trade_cash(trade, side, value) {
 	return next;
 }
 
-function validate_trade(trade, buyer, shop_actor, customer_id) {
-	const shop_data = shop.normalize_shop(shop_actor.system.shop);
-	if (!shop_actor.system.shop || !shop.has_stock(shop_data)) {
+/**
+ * Auto-balance the trade by adding cash to the side that's short.
+ * If player total < merchant total, player needs to add cash.
+ * If merchant total < player total, merchant needs to add cash.
+ * If already balanced, no change.
+ * Returns a new trade object with cash adjusted.
+ */
+function auto_balance_cash(trade, buyer, shop_data, customer) {
+	const next = normalize_trade(trade);
+
+	if (shop_data && shop_data.enable_cash === false) {
+		next.player.cash = 0;
+		next.merchant.cash = 0;
+		return next;
+	}
+
+	// Calculate the balance from items only (excluding current cash)
+	const items_only = normalize_trade(trade);
+	items_only.player.cash = 0;
+	items_only.merchant.cash = 0;
+	const balance = calc_balance(items_only, buyer, shop_data, customer);
+
+	if (balance.balanced) {
+		next.player.cash = 0;
+		next.merchant.cash = 0;
+		return next;
+	}
+
+	const diff = balance.diff; // player.items - merchant.items
+
+	if (diff < 0) {
+		// Player's items are worth less — player needs to add cash
+		next.player.cash = Math.max(0, -diff);
+		next.merchant.cash = 0;
+	} else {
+		// Merchant's items are worth less — merchant needs to add cash
+		const merchant_cash = shop_data.cash ?? -1;
+		if (merchant_cash !== -1 && diff > merchant_cash) {
+			next.merchant.cash = merchant_cash;
+			next.player.cash = Math.max(0, diff - merchant_cash);
+		} else {
+			next.merchant.cash = Math.max(0, diff);
+			next.player.cash = 0;
+		}
+	}
+
+	return next;
+}
+
+function validate_trade(trade, buyer, shop_data, customer) {
+	if (!shop.has_stock(shop_data)) {
 		return { ok: false, error: "no_shop" };
 	}
-	const customer = shop.get_customer(shop_data, customer_id);
 	const balance = calc_balance(trade, buyer, shop_data, customer);
 	if (balance.errors.includes("empty_trade")) {
 		return { ok: false, error: "empty_trade" };
@@ -308,19 +360,45 @@ function apply_stock_delta(stock, path, delta) {
 	}
 }
 
-async function apply_trade(buyer_id, shop_id, trade) {
+async function apply_trade(buyer_id, shop_id, scene_id, trade) {
 	const buyer = game.actors.get(buyer_id);
-	const shop_actor = game.actors.get(shop_id);
-	if (!buyer || !shop_actor) {
+	if (!buyer) {
 		return { ok: false, error: "missing_actor" };
 	}
-	const result = validate_trade(trade, buyer, shop_actor, buyer_id);
+
+	const scene = game.scenes.get(scene_id);
+	if (!scene) {
+		return { ok: false, error: "missing_scene" };
+	}
+
+	// Read shop data from the boon on the region behavior
+	const behavior = await fromUuid(shop_id);
+	console.log('smith-and-robards | apply_trade fromUuid', { shop_id, found: !!behavior, behavior_type: behavior?.type });
+	if (!behavior) {
+		return { ok: false, error: "missing_shop" };
+	}
+
+	const boons = foundry.utils.getProperty(behavior, "system.boons") || [];
+	const boon = boons.find(b => b.type === "open_shop");
+	if (!boon) {
+		return { ok: false, error: "missing_shop" };
+	}
+
+	const shop_data = shop.normalize_shop({
+		haggle_tn: boon.haggle_tn,
+		sell_ratio: boon.sell_ratio,
+		enable_cash: boon.enable_cash,
+		cash: boon.cash,
+		stock: boon.stock,
+	});
+
+	const customer = await shop.get_customer(scene, shop_id, buyer_id);
+	const result = validate_trade(trade, buyer, shop_data, customer);
 	if (!result.ok) {
 		return result;
 	}
 
 	const normalized = normalize_trade(trade);
-	const shop_data = result.shop_data;
 	const stock_update = foundry.utils.deepClone(shop_data.stock);
 	for (const [path, qty] of Object.entries(normalized.merchant.items)) {
 		const unit_qty = get_item_unit_qty(path);
@@ -338,16 +416,30 @@ async function apply_trade(buyer_id, shop_id, trade) {
 		}
 	}
 
-	shop.get_or_create_customer(shop_data, buyer_id);
-	const shop_update = {
-		"system.shop.stock": stock_update,
-		"system.shop.customers": shop_data.customers
-	};
+	// Update the boon stock on the region behavior
+	await shop.update_boon_stock(shop_id, (stock) => {
+		// Replace the stock with the updated version
+		Object.keys(stock).forEach(k => delete stock[k]);
+		Object.assign(stock, stock_update);
+	});
+
+	// Update merchant cash on the boon if limited
 	const merchant_cash = shop_data.cash ?? -1;
 	if (merchant_cash !== -1) {
-		shop_update["system.shop.cash"] = merchant_cash - normalized.merchant.cash + normalized.player.cash;
+		const new_cash = merchant_cash - normalized.merchant.cash + normalized.player.cash;
+		const boons2 = foundry.utils.deepClone(
+			foundry.utils.getProperty(behavior, "system.boons") || []
+		);
+		const boon2 = boons2.find(b => b.type === "open_shop");
+		if (boon2) {
+			boon2.cash = new_cash;
+			const idx = boons2.indexOf(boon2);
+			boons2[idx] = boon2;
+			await behavior.update({ "system.boons": boons2 });
+		}
 	}
 
+	// Update buyer
 	await game.dc.utils.save_actor(buyer, (system) => {
 		system.char.cash = (system.char.cash ?? 0) - normalized.player.cash + normalized.merchant.cash;
 		for (const [path, qty] of Object.entries(normalized.player.items)) {
@@ -357,7 +449,7 @@ async function apply_trade(buyer_id, shop_id, trade) {
 			game.dc.act.items.modify({ system }, path, qty);
 		}
 	});
-	await game.dc.utils.save_actor(shop_actor, shop_update);
+
 	return { ok: true };
 }
 
@@ -372,6 +464,7 @@ const barter = {
 	add_trade_item,
 	remove_trade_item,
 	set_trade_cash,
+	auto_balance_cash,
 	validate_trade,
 	apply_trade
 };
