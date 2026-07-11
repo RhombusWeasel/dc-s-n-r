@@ -1,0 +1,68 @@
+<div class="shop-barter-column shop-barter-trade">
+  <h4 class="center dc-header">{{localize "dc.shop.trade"}}</h4>
+
+  <div class="shop-trade-section">
+    <div class="center typed-small bold">{{localize "dc.shop.you_offer"}}</div>
+    {{#if trade_player.rows.length}}
+    <table class="shop-barter-items-table">
+      {{#each trade_player.rows as |row|}}
+      <tr>
+        <td class="center width-5">
+          <a class="fas fa-minus" data-action="removeTradeItem" data-side="player" data-path="{{row.path}}"></a>
+        </td>
+        <td class="left">{{row.label}} ×{{row.qty}}</td>
+        <td class="right">{{format_currency row.line_total}}</td>
+      </tr>
+      {{/each}}
+    </table>
+    {{else}}
+    <p class="center typed-small">—</p>
+    {{/if}}
+    <div class="shop-trade-cash flexrow">
+      <label>{{localize "dc.shop.cash"}}</label>
+      <input type="number" class="shop-trade-cash-input" data-side="player" value="{{trade_player.cash}}" min="0" />
+    </div>
+    <div class="right typed-small">{{localize "dc.shop.total"}}: {{format_currency trade_player.total}}</div>
+  </div>
+
+  <div class="shop-trade-section">
+    <div class="center typed-small bold">{{localize "dc.shop.they_offer"}}</div>
+    {{#if trade_merchant.rows.length}}
+    <table class="shop-barter-items-table">
+      {{#each trade_merchant.rows as |row|}}
+      <tr>
+        <td class="center width-5">
+          <a class="fas fa-minus" data-action="removeTradeItem" data-side="merchant" data-path="{{row.path}}"></a>
+        </td>
+        <td class="left">{{row.label}} ×{{row.qty}}</td>
+        <td class="right">{{format_currency row.line_total}}</td>
+      </tr>
+      {{/each}}
+    </table>
+    {{else}}
+    <p class="center typed-small">—</p>
+    {{/if}}
+    <div class="shop-trade-cash flexrow">
+      <label>{{localize "dc.shop.cash"}}</label>
+      <input type="number" class="shop-trade-cash-input" data-side="merchant" value="{{trade_merchant.cash}}" min="0" />
+    </div>
+    <div class="right typed-small">{{localize "dc.shop.total"}}: {{format_currency trade_merchant.total}}</div>
+  </div>
+
+  <div class="center shop-balance {{#if balanced}}shop-balance-ok{{else}}shop-balance-bad{{/if}}">
+    {{#if balanced}}
+    {{localize "dc.shop.balanced"}}
+    {{else}}
+    {{localize "dc.shop.unbalanced"}} ({{format_currency balance_diff}})
+    {{/if}}
+  </div>
+
+  <div class="center shop-trade-buttons">
+    <button type="button" data-action="acceptTrade" {{#unless can_accept}}disabled{{/unless}}>
+      {{localize "dc.shop.accept"}}
+    </button>
+    <button type="button" data-action="clearTrade">
+      {{localize "dc.shop.clear"}}
+    </button>
+  </div>
+</div>

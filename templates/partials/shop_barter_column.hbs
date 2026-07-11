@@ -1,0 +1,43 @@
+<div class="shop-barter-column">
+  <h4 class="center dc-header">
+    {{#if title}}{{title}}{{else}}{{localize header_key}}{{/if}}
+  </h4>
+  <div class="center typed-small">
+    {{localize cash_label_key}}:
+    {{#if (eq cash -1)}}
+    {{localize "dc.shop.unlimited"}}
+    {{else}}
+    {{format_currency cash}}
+    {{/if}}
+  </div>
+  <div class="scroll-container">
+    <div class="scroll shop-barter-scroll" data-scroll-id="{{scroll_id}}">
+      {{#if items.length}}
+      <table class="shop-barter-items-table">
+        <tr>
+          <th class="width-5"></th>
+          <th>{{localize "dc.shared.name"}}</th>
+          <th>{{localize "dc.shared.quantity_short"}}</th>
+          <th>{{localize "dc.shared.cost"}}</th>
+        </tr>
+        {{#each items as |item|}}
+        <tr>
+          <td class="center">
+            <a class="fas fa-plus" data-action="addTradeItem" data-side="{{../side}}" data-path="{{item.path}}" title="{{localize "dc.shop.add_to_trade"}}"></a>
+          </td>
+          <td class="left">{{item.label}}</td>
+          <td class="center">
+            {{#if item.count}}{{item.count}}{{else}}∞{{/if}}
+          </td>
+          <td class="right">
+            {{#if (eq ../side "player")}}{{format_currency item.sell_price}}{{else}}{{format_currency item.buy_price}}{{/if}}
+          </td>
+        </tr>
+        {{/each}}
+      </table>
+      {{else}}
+      <p class="center typed-small">{{localize "dc.shop.empty"}}</p>
+      {{/if}}
+    </div>
+  </div>
+</div>

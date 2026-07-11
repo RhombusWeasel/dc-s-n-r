@@ -1,0 +1,27 @@
+{{#if items}}
+<h4 class="center dc-header">{{localize header}}</h4>
+<table class="shop-gm-table">
+  <tr>
+    <th class="center width-5" title="{{localize "dc.shop.for_sale"}}"><i class="fas fa-check"></i></th>
+    <th class="center">{{localize "dc.shop.supply"}}</th>
+    <th>{{localize "dc.shared.name"}}</th>
+    <th>{{localize "dc.shared.cost"}}</th>
+  </tr>
+  {{#each items as |item|}}
+  <tr>
+    <td class="center shop-stock-toggle">
+      {{#if item.for_sale}}
+      <a class="toggle-path fas fa-check" data-action="toggleShopStock" data-path="{{item.path}}" title="{{localize "dc.shop.for_sale"}} {{item.label}}"></a>
+      {{else}}
+      <a class="toggle-path fas fa-times" data-action="toggleShopStock" data-path="{{item.path}}" title="{{localize "dc.shop.not_for_sale"}} {{item.label}}"></a>
+      {{/if}}
+    </td>
+    <td class="center">
+      <input type="number" class="shop-supply-input" data-field="supply" data-path="{{item.path}}" value="{{item.supply}}" min="-1" {{#unless item.for_sale}}disabled{{/unless}} />
+    </td>
+    <td class="left">{{item.label}}</td>
+    <td class="right">{{format_currency item.cost}}</td>
+  </tr>
+  {{/each}}
+</table>
+{{/if}}

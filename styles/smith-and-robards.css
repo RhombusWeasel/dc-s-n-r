@@ -1,0 +1,121 @@
+/* Smith & Robards — Shop CSS (extracted from Deadlands-Classic system) */
+
+.deadlands-classic .shop-buyer-row {
+	justify-content: center;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0.5rem 0;
+}
+
+.deadlands-classic .shop-barter-row {
+	flex: 1;
+	min-height: 0;
+	gap: 0.5rem;
+	align-items: stretch;
+}
+
+.deadlands-classic .shop-barter-column {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.deadlands-classic .shop-barter-trade {
+	flex: 0 0 14rem;
+	max-width: 14rem;
+}
+
+.deadlands-classic .shop-barter-column .scroll-container {
+	flex: 1;
+	min-height: 0;
+}
+
+.deadlands-classic .shop-barter-scroll {
+	max-height: 100%;
+}
+
+.deadlands-classic .shop-barter-items-table {
+	width: 100%;
+	margin-bottom: 0.5rem;
+}
+
+.deadlands-classic .shop-trade-section {
+	margin-bottom: 0.75rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.deadlands-classic .shop-trade-cash {
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0.35rem 0;
+}
+
+.deadlands-classic .shop-trade-cash-input {
+	width: 5rem;
+	text-align: right;
+}
+
+.deadlands-classic .shop-balance {
+	margin: 0.5rem 0;
+	font-weight: bold;
+}
+
+.deadlands-classic .shop-balance-ok {
+	color: #2d6a2d;
+}
+
+.deadlands-classic .shop-balance-bad {
+	color: #8b2020;
+}
+
+.deadlands-classic .shop-trade-buttons {
+	display: flex;
+	gap: 0.5rem;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.deadlands-classic.npc-shop-sheet {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.deadlands-classic.npc-shop-sheet .shop-barter-row {
+	flex: 1;
+}
+
+.deadlands-classic .shop-barter-actions {
+	margin-top: 0.5rem;
+}
+
+.deadlands-classic .shop-items-table,
+.deadlands-classic .shop-gm-table {
+	width: 100%;
+	margin-bottom: 0.75rem;
+}
+
+.deadlands-classic .shop-gm-table td.shop-stock-toggle a.toggle-path {
+	display: block;
+	padding: 0.35rem 0.5rem;
+	min-width: 1.75rem;
+	cursor: pointer;
+}
+
+.deadlands-classic .shop-supply-input {
+	width: 4rem;
+	text-align: center;
+}
+
+.deadlands-classic.npc-shop-sheet .scroll-container {
+	flex: 1;
+	min-height: 0;
+}
+
+.deadlands-classic .shop-catalog,
+.deadlands-classic .shop-catalog-gm {
+	max-height: 100%;
+}
