@@ -17,7 +17,7 @@ const LEGACY_MODULE_ID = "smith-and-robards";
 // ─── Init: preload templates ──────────────────────────────────────────────
 
 Hooks.once("init", () => {
-	loadTemplates([
+	foundry.applications.handlebars.loadTemplates([
 		"modules/dc-s-n-r/templates/shop.hbs",
 		"modules/dc-s-n-r/templates/partials/shop_barter_column.hbs",
 		"modules/dc-s-n-r/templates/partials/shop_barter_trade.hbs",
