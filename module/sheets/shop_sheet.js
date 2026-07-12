@@ -1,6 +1,7 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 import { shop, set_open_sheet, get_open_sheet } from "../lib/shop.js";
 import { barter } from "../lib/barter.js";
+import { get_cached_boon_entry, resolve_shop_boon } from "../lib/shop_boon_cache.js";
 
 const ScrollPreservationMixin = game.dc.scroll_preservation.ScrollPreservationMixin;
 
@@ -47,7 +48,8 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 				|| game.user.character?.id
 				|| shop.get_owned_characters()[0]?.id
 				|| "";
-			shop.emit_request_shop_data(shop_id, buyer_id, scene_id);
+			const cached = get_cached_boon_entry(shop_id);
+			shop.emit_request_shop_data(shop_id, buyer_id, scene_id, cached?.boon);
 		}
 
 		return sheet;
@@ -84,12 +86,11 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		// GM: read shop data from the boon on the region behavior
+		// GM: read shop data from cached boon or region behavior
 		if (game.user.isGM) {
-			const behavior = await fromUuid(this.shop_id);
-			const boons = foundry.utils.getProperty(behavior, "system.boons") || [];
-			const boon = boons.find(b => b.type === "open_shop");
-			if (boon) {
+			const resolved = await resolve_shop_boon(this.shop_id);
+			if (resolved?.boon) {
+				const boon = resolved.boon;
 				this._current_shop_data = shop.normalize_shop({
 					haggle_tn: boon.haggle_tn,
 					sell_ratio: boon.sell_ratio,

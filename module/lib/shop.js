@@ -17,6 +17,12 @@ const DEFAULT_SHOP = {
 };
 
 import { barter } from "./barter.js";
+import {
+  cache_shop_boon,
+  get_cached_boon_entry,
+  resolve_shop_boon,
+  update_shop_boon,
+} from "./shop_boon_cache.js";
 
 function parse_sell_ratio(value) {
 	if (value == null || value === "" || value <= 0) {
@@ -308,14 +314,13 @@ async function handle_request_shop_data(data) {
 	const scene = game.scenes.get(scene_id);
 	if (!scene) return;
 
-	// Find the region behavior by UUID
-	const behavior = await fromUuid(shop_id);
-	if (!behavior) return;
+	if (msg.boon) {
+		cache_shop_boon(shop_id, msg.boon);
+	}
 
-	// Read the open_shop boon from the behavior
-	const boons = foundry.utils.getProperty(behavior, "system.boons") || [];
-	const boon = boons.find(b => b.type === "open_shop");
-	if (!boon) return;
+	const resolved = await resolve_shop_boon(shop_id);
+	if (!resolved?.boon) return;
+	const boon = resolved.boon;
 
 	const shop = normalize_shop({
 		haggle_tn: boon.haggle_tn,
@@ -373,12 +378,16 @@ function handle_shop_data(payload) {
 /**
  * Player-side: request shop data from the GM.
  */
-function emit_request_shop_data(shop_id, buyer_id, scene_id) {
+function emit_request_shop_data(shop_id, buyer_id, scene_id, boon = null) {
+	if (boon) {
+		cache_shop_boon(shop_id, boon);
+	}
 	socket_utils_emit("shop", "gm", {
 		operation: "request_shop_data",
 		shop_id,
 		buyer_id,
 		scene_id,
+		boon,
 	});
 }
 
@@ -389,23 +398,11 @@ function emit_request_shop_data(shop_id, buyer_id, scene_id) {
  * @param {string} behavior_uuid — the region behavior UUID
  * @param {Function} update_fn — (stock) => void, mutates the stock object
  */
-async function update_boon_stock(behavior_uuid, update_fn) {
-	const behavior = await fromUuid(behavior_uuid);
-	if (!behavior) return;
-
-	const boons = foundry.utils.deepClone(
-		foundry.utils.getProperty(behavior, "system.boons") || []
-	);
-	const boon = boons.find(b => b.type === "open_shop");
-	if (!boon) return;
-
-	const stock = boon.stock || {};
-	update_fn(stock);
-	boon.stock = stock;
-
-	const idx = boons.indexOf(boon);
-	boons[idx] = boon;
-	await behavior.update({ "system.boons": boons });
+async function update_boon_stock(shop_id, update_fn) {
+	await update_shop_boon(shop_id, (boon) => {
+		if (!boon.stock) boon.stock = {};
+		update_fn(boon.stock);
+	});
 }
 
 // ─── Purchase ──────────────────────────────────────────────────────────────
@@ -517,7 +514,12 @@ function request_trade(data) {
 
 // ─── Open shop sheet ─────────────────────────────────────────────────────────
 
-async function open_shop_sheet(shop_data, shop_id, scene, buyer_actor) {
+async function open_shop_sheet(shop_data, shop_id, scene, buyer_actor, options = {}) {
+	const { boon, persist_boon } = options;
+	if (boon) {
+		cache_shop_boon(shop_id, boon, persist_boon);
+	}
+
 	const buyer_id = buyer_actor?.id
 		|| game.user.character?.id
 		|| get_owned_characters()[0]?.id
@@ -526,16 +528,23 @@ async function open_shop_sheet(shop_data, shop_id, scene, buyer_actor) {
 
 	if (_open_sheet?.shop_id === shop_id) {
 		if (!game.user.isGM) {
-			emit_request_shop_data(shop_id, buyer_id, scene_id);
+			const cached = get_cached_boon_entry(shop_id);
+			emit_request_shop_data(shop_id, buyer_id, scene_id, cached?.boon);
 		} else {
 			_open_sheet.render(true);
 		}
 		return true;
 	}
 
-	const { NpcShopSheet } = await import("../sheets/shop_sheet.js");
-	NpcShopSheet.show(shop_data, shop_id, scene_id, buyer_id);
-	return true;
+	try {
+		const { NpcShopSheet } = await import("../sheets/shop_sheet.js");
+		NpcShopSheet.show(shop_data, shop_id, scene_id, { buyer_id });
+		return true;
+	} catch (err) {
+		console.error("dc-s-n-r | open_shop_sheet failed", err);
+		ui.notifications.error("Failed to open shop.");
+		return false;
+	}
 }
 
 // ─── Internal: socket emit on module channel ──────────────────────────────

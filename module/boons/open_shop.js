@@ -10,7 +10,7 @@
 
 import { shop } from "../lib/shop.js";
 
-export default function open_shop_boon(boon, context) {
+export default async function open_shop_boon(boon, context) {
 	const { region, actor } = context;
 
 	if (!actor) {
@@ -37,7 +37,15 @@ export default function open_shop_boon(boon, context) {
 		shop_id = boon.shop_id;
 	}
 
-	shop.open_shop_sheet(shop_data, shop_id, scene, actor);
+	try {
+		await shop.open_shop_sheet(shop_data, shop_id, scene, actor, {
+			boon,
+			persist_boon: context.persist_boon,
+		});
+	} catch (err) {
+		console.error("dc-s-n-r | open_shop_boon failed", err);
+		ui.notifications.error("Failed to open shop.");
+	}
 }
 
 // ─── Registration ─────────────────────────────────────────────────────────

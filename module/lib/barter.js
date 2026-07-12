@@ -1,4 +1,5 @@
 import { shop } from "./shop.js";
+import { resolve_shop_boon, update_shop_boon } from "./shop_boon_cache.js";
 
 function empty_trade() {
 	return {
@@ -371,18 +372,11 @@ async function apply_trade(buyer_id, shop_id, scene_id, trade) {
 		return { ok: false, error: "missing_scene" };
 	}
 
-	// Read shop data from the boon on the region behavior
-	const behavior = await fromUuid(shop_id);
-	console.log('dc-s-n-r | apply_trade fromUuid', { shop_id, found: !!behavior, behavior_type: behavior?.type });
-	if (!behavior) {
+	const resolved = await resolve_shop_boon(shop_id);
+	if (!resolved?.boon) {
 		return { ok: false, error: "missing_shop" };
 	}
-
-	const boons = foundry.utils.getProperty(behavior, "system.boons") || [];
-	const boon = boons.find(b => b.type === "open_shop");
-	if (!boon) {
-		return { ok: false, error: "missing_shop" };
-	}
+	const boon = resolved.boon;
 
 	const shop_data = shop.normalize_shop({
 		haggle_tn: boon.haggle_tn,
@@ -416,28 +410,19 @@ async function apply_trade(buyer_id, shop_id, scene_id, trade) {
 		}
 	}
 
-	// Update the boon stock on the region behavior
-	await shop.update_boon_stock(shop_id, (stock) => {
-		// Replace the stock with the updated version
-		Object.keys(stock).forEach(k => delete stock[k]);
-		Object.assign(stock, stock_update);
-	});
-
-	// Update merchant cash on the boon if limited
 	const merchant_cash = shop_data.cash ?? -1;
-	if (merchant_cash !== -1) {
-		const new_cash = merchant_cash - normalized.merchant.cash + normalized.player.cash;
-		const boons2 = foundry.utils.deepClone(
-			foundry.utils.getProperty(behavior, "system.boons") || []
-		);
-		const boon2 = boons2.find(b => b.type === "open_shop");
-		if (boon2) {
-			boon2.cash = new_cash;
-			const idx = boons2.indexOf(boon2);
-			boons2[idx] = boon2;
-			await behavior.update({ "system.boons": boons2 });
+	const new_cash = merchant_cash !== -1
+		? merchant_cash - normalized.merchant.cash + normalized.player.cash
+		: merchant_cash;
+
+	await update_shop_boon(shop_id, (b) => {
+		if (!b.stock) b.stock = {};
+		Object.keys(b.stock).forEach(k => delete b.stock[k]);
+		Object.assign(b.stock, stock_update);
+		if (merchant_cash !== -1) {
+			b.cash = new_cash;
 		}
-	}
+	});
 
 	// Update buyer
 	await game.dc.utils.save_actor(buyer, (system) => {
