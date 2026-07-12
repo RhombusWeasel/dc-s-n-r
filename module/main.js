@@ -1,26 +1,27 @@
 /**
- * Smith & Robards — Shop module for Deadlands Classic
+ * dc-s-n-r — Shop module for Deadlands Classic
  *
  * Shop config lives on the open_shop boon (attached to dcBoonRegion behaviors).
  * Customer data lives in scene flags. No NPC actor is required.
  */
 
-import { register_socket } from "./socket.js";
+import { register_socket, SOCKET_CHANNEL } from "./socket.js";
 import { shop } from "./lib/shop.js";
 import { barter } from "./lib/barter.js";
 import { register_boons } from "./boons/open_shop.js";
 import { register as register_shop_stock_field } from "./field_types/shop_stock.js";
 
-const MODULE_ID = "smith-and-robards";
+const MODULE_ID = "dc-s-n-r";
+const LEGACY_MODULE_ID = "smith-and-robards";
 
 // ─── Init: preload templates ──────────────────────────────────────────────
 
 Hooks.once("init", () => {
 	loadTemplates([
-		"modules/smith-and-robards/templates/shop.hbs",
-		"modules/smith-and-robards/templates/partials/shop_barter_column.hbs",
-		"modules/smith-and-robards/templates/partials/shop_barter_trade.hbs",
-		"modules/smith-and-robards/templates/partials/shop_category.hbs",
+		"modules/dc-s-n-r/templates/shop.hbs",
+		"modules/dc-s-n-r/templates/partials/shop_barter_column.hbs",
+		"modules/dc-s-n-r/templates/partials/shop_barter_trade.hbs",
+		"modules/dc-s-n-r/templates/partials/shop_category.hbs",
 	]);
 
 	game.settings.register(MODULE_ID, "dcshop-region-migrated", {
@@ -42,6 +43,11 @@ Hooks.once("dcReady", () => {
 	// Register open_shop boon type + template
 	register_boons();
 
+	// Migrate legacy scene flag + settings scope
+	if (game.user.isGM) {
+		_migrate_legacy_data();
+	}
+
 	// Push shop updates to players when GM modifies the boon on a region behavior
 	Hooks.on("updateRegionBehavior", (behavior, changed) => {
 		if (behavior.type !== "dcBoonRegion") return;
@@ -60,8 +66,7 @@ Hooks.once("dcReady", () => {
 				stock: shop_boon.stock,
 			});
 			if (shop.has_stock(shop_data)) {
-				const scene = behavior.parent;
-				game.socket.emit("module.smith-and-robards", {
+				game.socket.emit(SOCKET_CHANNEL, {
 					event: "shop",
 					msg: {
 						operation: "shop_data",
@@ -89,13 +94,35 @@ Hooks.once("dcReady", () => {
 		};
 	}
 
-	console.log("Smith & Robards | Module ready.");
+	console.log("dc-s-n-r | Module ready.");
 });
+
+// ─── Legacy data migration ────────────────────────────────────────────────
+
+async function _migrate_legacy_data() {
+	// Settings: honour migration flag registered under old module id
+	if (!game.settings.get(MODULE_ID, "dcshop-region-migrated")
+		&& game.settings.get(LEGACY_MODULE_ID, "dcshop-region-migrated")) {
+		await game.settings.set(MODULE_ID, "dcshop-region-migrated", true);
+	}
+
+	// Scene flags: copy customer data from legacy module scope
+	for (const scene of game.scenes) {
+		const legacy = scene.getFlag(LEGACY_MODULE_ID, "customers");
+		if (!legacy) continue;
+		if (scene.getFlag(MODULE_ID, "customers")) continue;
+		await scene.setFlag(MODULE_ID, "customers", foundry.utils.deepClone(legacy));
+	}
+}
 
 // ─── dcShop region behavior migration ─────────────────────────────────────
 
 async function _migrate_dcshop_regions() {
 	if (game.settings.get(MODULE_ID, "dcshop-region-migrated")) return;
+	if (game.settings.get(LEGACY_MODULE_ID, "dcshop-region-migrated")) {
+		await game.settings.set(MODULE_ID, "dcshop-region-migrated", true);
+		return;
+	}
 
 	for (const scene of game.scenes) {
 		for (const region of scene.regions) {
@@ -127,11 +154,11 @@ async function _migrate_dcshop_regions() {
 				// Delete the old dcShop behavior
 				await behavior.delete();
 
-				console.log(`Smith & Robards | Migrated dcShop behavior on region "${region.name}" in scene "${scene.name}"`);
+				console.log(`dc-s-n-r | Migrated dcShop behavior on region "${region.name}" in scene "${scene.name}"`);
 			}
 		}
 	}
 
 	await game.settings.set(MODULE_ID, "dcshop-region-migrated", true);
-	console.log("Smith & Robards | dcShop region migration complete.");
+	console.log("dc-s-n-r | dcShop region migration complete.");
 }

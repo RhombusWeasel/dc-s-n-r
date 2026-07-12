@@ -1,8 +1,6 @@
-# Smith & Robards
+# dc-s-n-r
 
 Shop and barter module for the Deadlands Classic Foundry VTT system. Extracted from the Deadlands-Classic system as a standalone module.
-
-Named after the in-game store catalog — Smith & Robards.
 
 ## Dependencies
 
@@ -36,7 +34,7 @@ Named after the in-game store catalog — Smith & Robards.
 
 ## Socket Channel
 
-Uses its own socket channel: `module.smith-and-robards` (registered via `socket: true` in `module.json`).
+Uses its own socket channel: `module.dc-s-n-r` (registered via `socket: true` in `module.json`).
 
 ## Boon Types
 
@@ -45,8 +43,7 @@ Uses its own socket channel: `module.smith-and-robards` (registered via `socket:
 ## Module API
 
 ```javascript
-game.modules.get("smith-and-robards").api.shop
-game.modules.get("smith-and-robards").api.barter
-game.modules.get("smith-and-robards").api.npc_interaction
-game.modules.get("smith-and-robards").api.open_shop(actor)
+game.modules.get("dc-s-n-r").api.shop
+game.modules.get("dc-s-n-r").api.barter
+game.modules.get("dc-s-n-r").api.open_shop(shop_data, shop_id, scene, buyer)
 ```

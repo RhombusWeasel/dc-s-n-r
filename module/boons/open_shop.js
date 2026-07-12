@@ -1,18 +1,24 @@
 /**
- * open_shop boon — fires when a player token enters a region with this boon.
- * Opens the shop sheet using data stored on the boon itself (no NPC actor required).
+ * open_shop boon — opens the shop sheet using data stored on the boon itself.
+ * Works from region entry, dialog responses, or any other boon execution context.
  *
  * Boon handler signature: (boon, context) => void
- * context: { region, target, actor }
- *   - region: the region document (region.parent = scene)
- *   - actor: the entering player's actor (the buyer)
+ * context: { region?, target, actor, scene?, behavior?, behavior_uuid? }
+ *   - region: the region document when fired from a region (region.parent = scene)
+ *   - actor: the player's actor (the buyer)
  */
 
 import { shop } from "../lib/shop.js";
 
 export default function open_shop_boon(boon, context) {
 	const { region, actor } = context;
-	const scene = region?.parent;
+
+	if (!actor) {
+		ui.notifications.warn("No buyer actor for shop.");
+		return;
+	}
+
+	const scene = region?.parent ?? context.scene ?? canvas.scene;
 
 	// Build shop data from the boon
 	const shop_data = {
@@ -24,9 +30,12 @@ export default function open_shop_boon(boon, context) {
 		stock: boon.stock || {},
 	};
 
-	// Determine the shop ID from the region behavior UUID
-	// (passed via context if available, otherwise use region.id as fallback)
-	const shop_id = context.behavior_uuid || context.behavior?.uuid || region.id;
+	// Region shops use behavior UUID; embedded/dialog shops use boon.shop_id
+	let shop_id = context.behavior_uuid || context.behavior?.uuid || boon.shop_id;
+	if (!shop_id) {
+		boon.shop_id = foundry.utils.randomID();
+		shop_id = boon.shop_id;
+	}
 
 	shop.open_shop_sheet(shop_data, shop_id, scene, actor);
 }
@@ -46,6 +55,7 @@ function register_boons() {
 			type: "open_shop",
 			trigger: "always",
 			shopkeeper_name: "Shopkeeper",
+			shop_id: "",
 			haggle_tn: 5,
 			sell_ratio: 0.5,
 			enable_cash: true,

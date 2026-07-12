@@ -1,6 +1,6 @@
 {
-  "id": "smith-and-robards",
-  "title": "Deadlands Classic — Smith & Robards Shop",
+  "id": "dc-s-n-r",
+  "title": "Deadlands Classic — Shop",
   "description": "Shop and barter module for the Deadlands Classic system. Extracted from the system as a standalone module. Uses the boon system for shop regions — add an 'open_shop' boon to a region to open the shop sheet when a player enters.",
   "version": "1.0.0",
   "authors": [
@@ -17,7 +17,7 @@
     "module/main.js"
   ],
   "styles": [
-    "styles/smith-and-robards.css"
+    "styles/dc-s-n-r.css"
   ],
   "languages": [
     {

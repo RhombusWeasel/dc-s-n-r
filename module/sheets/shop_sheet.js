@@ -23,7 +23,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 
 	static PARTS = {
 		main: {
-			template: "modules/smith-and-robards/templates/shop.hbs",
+			template: "modules/dc-s-n-r/templates/shop.hbs",
 			root: true,
 			scrollable: [".scroll"],
 		},

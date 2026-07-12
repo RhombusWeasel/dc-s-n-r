@@ -87,36 +87,38 @@ function get_catalog_item(path) {
 
 // ─── Customer data (scene flags) ──────────────────────────────────────────
 
+const MODULE_ID = "dc-s-n-r";
+
 async function get_customer(scene, shop_id, customer_id) {
-	const customers = scene?.getFlag("smith-and-robards", "customers") || {};
+	const customers = scene?.getFlag(MODULE_ID, "customers") || {};
 	return customers[shop_id]?.[customer_id] || { opinion: 0, price_modifier_pct: 0 };
 }
 
 async function get_or_create_customer(scene, shop_id, customer_id) {
-	const customers = scene?.getFlag("smith-and-robards", "customers") || {};
+	const customers = scene?.getFlag(MODULE_ID, "customers") || {};
 	if (!customers[shop_id]) customers[shop_id] = {};
 	if (!customers[shop_id][customer_id]) {
 		customers[shop_id][customer_id] = { opinion: 0, price_modifier_pct: 0 };
-		await scene.setFlag("smith-and-robards", "customers", customers);
+		await scene.setFlag(MODULE_ID, "customers", customers);
 	}
 	return customers[shop_id][customer_id];
 }
 
 async function update_customer(scene, shop_id, customer_id, update_fn) {
 	const customers = foundry.utils.deepClone(
-		scene?.getFlag("smith-and-robards", "customers") || {}
+		scene?.getFlag(MODULE_ID, "customers") || {}
 	);
 	if (!customers[shop_id]) customers[shop_id] = {};
 	if (!customers[shop_id][customer_id]) {
 		customers[shop_id][customer_id] = { opinion: 0, price_modifier_pct: 0 };
 	}
 	update_fn(customers[shop_id][customer_id]);
-	await scene.setFlag("smith-and-robards", "customers", customers);
+	await scene.setFlag(MODULE_ID, "customers", customers);
 	return foundry.utils.deepClone(customers[shop_id][customer_id]);
 }
 
 async function build_customers_context(scene, shop_id) {
-	const customers = scene?.getFlag("smith-and-robards", "customers") || {};
+	const customers = scene?.getFlag(MODULE_ID, "customers") || {};
 	const shop_customers = customers[shop_id] || {};
 	const rows = [];
 	for (const [actor_id, record] of Object.entries(shop_customers)) {
@@ -207,9 +209,9 @@ function buyer_owned_by_user(buyer_id, user_id) {
 	return buyer.testUserPermission(user, "OWNER");
 }
 
-// ─── Socket: module.smith-and-robards channel ─────────────────────────────
+// ─── Socket: module.dc-s-n-r channel ─────────────────────────────────────
 
-const SOCKET_CHANNEL = "module.smith-and-robards";
+const SOCKET_CHANNEL = "module.dc-s-n-r";
 
 function shop_emit(operation, data) {
 	const payload = { event: "shop", operation, data, senderId: game.user.id };

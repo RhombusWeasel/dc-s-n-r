@@ -28,15 +28,15 @@
 
   {{#if has_buyer}}
   <div class="shop-barter-row flexrow">
-    {{> "modules/smith-and-robards/templates/partials/shop_barter_column.hbs"
+    {{> "modules/dc-s-n-r/templates/partials/shop_barter_column.hbs"
       header_key="dc.shop.player"
       cash=player_cash
       cash_label_key="dc.shop.cash"
       items=player_items
       side="player"
       scroll_id="shop-player"}}
-    {{> "modules/smith-and-robards/templates/partials/shop_barter_trade.hbs"}}
-    {{> "modules/smith-and-robards/templates/partials/shop_barter_column.hbs"
+    {{> "modules/dc-s-n-r/templates/partials/shop_barter_trade.hbs"}}
+    {{> "modules/dc-s-n-r/templates/partials/shop_barter_column.hbs"
       title=shop_name
       cash=merchant_cash
       cash_label_key="dc.shop.merchant_cash"

@@ -1,12 +1,12 @@
 /**
- * Socket handler for smith-and-robards module.
- * Routes incoming socket packets on the `module.smith-and-robards` channel
+ * Socket handler for dc-s-n-r module.
+ * Routes incoming socket packets on the `module.dc-s-n-r` channel
  * to the shop handler.
  */
 
 import { shop } from "./lib/shop.js";
 
-const SOCKET_CHANNEL = "module.smith-and-robards";
+const SOCKET_CHANNEL = "module.dc-s-n-r";
 
 function register_socket() {
 	if (!game.socket) return;
