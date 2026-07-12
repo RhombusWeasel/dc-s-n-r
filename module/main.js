@@ -29,6 +29,12 @@ Hooks.once("init", () => {
 		config: false,
 		default: false,
 	});
+
+	game.settings.register(LEGACY_MODULE_ID, "dcshop-region-migrated", {
+		scope: "world",
+		config: false,
+		default: false,
+	});
 });
 
 // ─── dcReady: register everything ─────────────────────────────────────────
