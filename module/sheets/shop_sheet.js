@@ -275,13 +275,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 			ui.notifications.warn(game.i18n.localize("dc.shop.errors.no_streetwise"));
 			return;
 		}
-		const haggle_html = game.dc.roll_report.build_roll_report({
-			type: 'haggle',
-			actor_name: buyer.name,
-			action_label: haggle_label,
-			r_data,
-		});
-		game.dc.msg.chat(haggle_html, ChatMessage.getSpeaker({ actor: buyer }));
+		report_context.post(report_context.haggle(buyer, haggle_label, r_data), buyer);
 		shop.emit("haggle", {
 			shop_id: this.shop_id,
 			scene_id: this.scene_id,
