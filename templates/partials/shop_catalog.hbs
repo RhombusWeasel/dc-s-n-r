@@ -1,0 +1,132 @@
+<div class="shop-catalog flexcol">
+  <div class="center typed-small shop-catalog-cash">
+    {{localize "dc.shared.cash"}} {{format_currency player_cash}}
+  </div>
+  <div class="scroll-container">
+    <div class="scroll shop-catalog-scroll" data-scroll-id="shop-catalog">
+      {{#if catalog_sections.length}}
+      {{#each catalog_sections as |section|}}
+        {{#if (eq section.type "group_header")}}
+        <div class="center dc-newspaper-subhead">{{localize section.header_key}}</div>
+        {{else}}
+        <div class="center dc-newspaper-subhead">{{localize section.header_key}}</div>
+        <table class="shop-catalog-table">
+          <tr>
+            <th class="width-5"></th>
+            <th class="width-5"></th>
+            <th class="width-5"></th>
+            <th class="width-50">{{localize "dc.shared.name"}}</th>
+            <th title="{{localize "dc.shared.rarity"}}"><i class="fas fa-gem"></i></th>
+            {{#if (eq section.column_type "ranged")}}
+            <th title="{{localize "dc.shared.weight"}}"><i class="fas fa-weight-hanging"></i></th>
+            <th title="{{localize "dc.shared.calibur"}}"><i class="fas fa-ruler-combined"></i></th>
+            <th title="{{localize "dc.shared.damage"}}"><i class="fas fa-bahai"></i></th>
+            {{else if (eq section.column_type "ammo")}}
+            <th title="{{localize "dc.shared.quantity"}}"><i class="fas fa-box"></i></th>
+            <th title="{{localize "dc.shared.weight"}}"><i class="fas fa-weight-hanging"></i></th>
+            {{else if (eq section.column_type "armour")}}
+            <th title="{{localize "dc.shared.weight"}}"><i class="fas fa-weight-hanging"></i></th>
+            <th title="{{localize "dc.shared.armour_rating"}}"><i class="fas fa-shield-alt"></i></th>
+            {{else if (eq section.column_type "melee")}}
+            <th title="{{localize "dc.shared.weight"}}"><i class="fas fa-weight-hanging"></i></th>
+            <th title="{{localize "dc.shared.damage"}}"><i class="fas fa-bahai"></i></th>
+            {{else if (eq section.column_type "thrown")}}
+            <th title="{{localize "dc.shared.weight"}}"><i class="fas fa-weight-hanging"></i></th>
+            <th title="{{localize "dc.shared.damage"}}"><i class="fas fa-bahai"></i></th>
+            {{else if (eq section.column_type "goods")}}
+            <th title="{{localize "dc.shared.weight"}}"><i class="fas fa-weight-hanging"></i></th>
+            {{else}}
+            <th title="{{localize "dc.shared.weight"}}"><i class="fas fa-weight-hanging"></i></th>
+            {{/if}}
+            <th title="{{localize "dc.shop.supply"}}"><i class="fas fa-boxes"></i></th>
+            <th title="{{localize "dc.shared.cost"}}"><i class="fas fa-dollar-sign"></i></th>
+          </tr>
+          {{#each section.items as |item|}}
+          <tr>
+            <td class="center">
+              {{#if item.order_qty}}
+              <a class="fas fa-minus remove-order-item" data-action="removeOrderItem" data-path="{{item.path}}" title="{{localize "dc.shop.remove_from_order"}}"></a>
+              {{/if}}
+            </td>
+            <td class="center">{{item.order_qty}}</td>
+            <td class="center">
+              <a class="fas fa-plus buy-catalog-item" data-action="buyCatalogItem" data-path="{{item.path}}" title="{{localize "dc.shop.add_to_order"}}"></a>
+            </td>
+            <td class="left">{{item.label}}</td>
+            <td class="center">{{lookup_localization "dc.equipment.rarity" item.rarity}}</td>
+            {{#if (eq section.column_type "ranged")}}
+            <td class="center">{{item.weight}}</td>
+            <td class="center">{{item.calibur}}</td>
+            <td class="center">{{item.damage_die}}d{{item.damage_sides}}{{#if (gt 0 item.damage_mod)}}+{{item.damage_mod}}{{/if}}</td>
+            {{else if (eq section.column_type "ammo")}}
+            <td class="center">{{item.quantity}}</td>
+            <td class="center">{{item.weight}}</td>
+            {{else if (eq section.column_type "armour")}}
+            <td class="center">{{item.weight}}</td>
+            <td class="center">{{item.armour_rating}}</td>
+            {{else if (eq section.column_type "melee")}}
+            <td class="center">{{item.weight}}</td>
+            <td class="center">STR+{{item.damage_die}}d{{item.damage_sides}}{{#if (gt 0 item.damage_mod)}}+{{item.damage_mod}}{{/if}}</td>
+            {{else if (eq section.column_type "thrown")}}
+            <td class="center">{{item.weight}}</td>
+            <td class="center">{{item.damage_die}}d{{item.damage_sides}}{{#if (gt 0 item.damage_mod)}}+{{item.damage_mod}}{{/if}}</td>
+            {{else if (eq section.column_type "goods")}}
+            <td class="center">{{item.weight}}</td>
+            {{else}}
+            <td class="center">{{item.weight}}</td>
+            {{/if}}
+            <td class="center">
+              {{#if (eq item.supply -1)}}
+              {{localize "dc.shop.unlimited"}}
+              {{else}}
+              {{item.supply}}
+              {{/if}}
+            </td>
+            <td class="right">{{format_currency item.price}}</td>
+          </tr>
+          {{/each}}
+        </table>
+        {{/if}}
+      {{/each}}
+      {{else}}
+      <p class="center typed-small">{{localize "dc.shop.empty"}}</p>
+      {{/if}}
+    </div>
+  </div>
+  <div class="shop-catalog-order flex-fixed">
+    {{#if order_rows.length}}
+    <div class="center typed-small bold">{{localize "dc.shop.order"}}</div>
+    <table class="shop-catalog-order-table">
+      <tr>
+        <th class="width-5"></th>
+        <th>{{localize "dc.shared.name"}}</th>
+        <th>{{localize "dc.shared.quantity_short"}}</th>
+        <th>{{localize "dc.shared.cost"}}</th>
+      </tr>
+      {{#each order_rows as |row|}}
+      <tr>
+        <td class="center">
+          <a class="fas fa-minus" data-action="removeOrderItem" data-path="{{row.path}}"></a>
+        </td>
+        <td class="left">{{row.label}}</td>
+        <td class="center">{{row.qty}}</td>
+        <td class="right">{{format_currency row.line_total}}</td>
+      </tr>
+      {{/each}}
+    </table>
+    <div class="right typed-small shop-catalog-order-total">
+      {{localize "dc.shop.order_total"}}: {{format_currency order_total}}
+    </div>
+    {{else}}
+    <p class="center typed-small">{{localize "dc.shop.order_empty"}}</p>
+    {{/if}}
+    <div class="center shop-catalog-order-actions">
+      <button type="button" data-action="confirmOrder" {{#unless can_confirm_order}}disabled{{/unless}}>
+        {{localize "dc.shop.confirm_order"}}
+      </button>
+      <button type="button" data-action="clearOrder" {{#unless order_rows.length}}disabled{{/unless}}>
+        {{localize "dc.shop.clear_order"}}
+      </button>
+    </div>
+  </div>
+</div>

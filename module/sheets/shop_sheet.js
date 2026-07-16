@@ -1,6 +1,7 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 import { shop, set_open_sheet, get_open_sheet } from "../lib/shop.js";
 import { barter } from "../lib/barter.js";
+import { catalog } from "../lib/catalog.js";
 import { get_cached_boon_entry, resolve_shop_boon } from "../lib/shop_boon_cache.js";
 
 const ScrollPreservationMixin = game.dc.scroll_preservation.ScrollPreservationMixin;
@@ -67,6 +68,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 			|| shop.get_owned_characters()[0]?.id
 			|| "";
 		this.trade = barter.empty_trade();
+		this.catalog_order = catalog.empty_order();
 	}
 
 	get shop_data() {
@@ -90,14 +92,7 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		if (game.user.isGM) {
 			const resolved = await resolve_shop_boon(this.shop_id);
 			if (resolved?.boon) {
-				const boon = resolved.boon;
-				this._current_shop_data = shop.normalize_shop({
-					haggle_tn: boon.haggle_tn,
-					sell_ratio: boon.sell_ratio,
-					enable_cash: boon.enable_cash,
-					cash: boon.cash,
-					stock: boon.stock,
-				});
+				this._current_shop_data = shop.shop_data_from_boon(resolved.boon);
 			}
 		}
 
@@ -117,11 +112,17 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		}
 
 		const shop_data = this.shop_data;
-		const balance = barter.calc_balance(this.trade, buyer, shop_data, customer);
+		const trade_mode = shop_data.trade_mode ?? "trade";
+		const is_catalog = trade_mode === "catalog";
+		const balance = is_catalog
+			? null
+			: barter.calc_balance(this.trade, buyer, shop_data, customer);
 
 		context.shop_name = this.shopkeeper_name;
 		context.shop_id = this.shop_id;
 		context.buyer_id = this.buyer_id;
+		context.trade_mode = trade_mode;
+		context.is_catalog = is_catalog;
 		context.buyers = shop.get_owned_characters().map(a => ({
 			id: a.id,
 			name: a.name,
@@ -133,13 +134,24 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		context.price_modifier_pct = customer.price_modifier_pct ?? 0;
 		context.opinion = customer.opinion ?? 0;
 		context.haggle_tn = shop_data.haggle_tn ?? 5;
-		context.player_items = barter.build_player_inventory(buyer, customer, shop_data);
-		context.merchant_items = barter.build_merchant_inventory(shop_data, customer);
-		context.trade_player = balance.player;
-		context.trade_merchant = balance.merchant;
-		context.balanced = balance.balanced;
-		context.balance_diff = Math.abs(balance.diff);
-		context.can_accept = balance.balanced && !balance.errors.includes("empty_trade");
+
+		if (is_catalog) {
+			const order_summary = catalog.build_order_summary(this.catalog_order, shop_data);
+			context.catalog_sections = catalog.build_catalog_sections(shop_data, buyer, this.catalog_order);
+			context.order_rows = order_summary.rows;
+			context.order_total = order_summary.total;
+			context.can_confirm_order = order_summary.rows.length > 0
+				&& order_summary.total <= (buyer?.system.char.cash ?? 0);
+		} else {
+			context.player_items = barter.build_player_inventory(buyer, customer, shop_data);
+			context.merchant_items = barter.build_merchant_inventory(shop_data, customer);
+			context.trade_player = balance.player;
+			context.trade_merchant = balance.merchant;
+			context.balanced = balance.balanced;
+			context.balance_diff = Math.abs(balance.diff);
+			context.can_accept = balance.balanced && !balance.errors.includes("empty_trade");
+		}
+
 		context.has_buyer = !!buyer;
 		this._current_customer = customer;
 		this._current_shop_data = shop_data;
@@ -161,6 +173,10 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 			acceptTrade: this._on_accept_trade,
 			clearTrade: this._on_clear_trade,
 			autoBalance: this._on_auto_balance,
+			buyCatalogItem: this._on_add_order_item,
+			removeOrderItem: this._on_remove_order_item,
+			confirmOrder: this._on_confirm_order,
+			clearOrder: this._on_clear_order,
 			haggle: this._on_haggle,
 			close: this._on_close,
 		};
@@ -249,6 +265,57 @@ class NpcShopSheet extends ScrollPreservationMixin(HandlebarsApplicationMixin(Ap
 		const customer = this._current_customer || { opinion: 0, price_modifier_pct: 0 };
 		const shop_data = this._current_shop_data || this.shop_data;
 		this.trade = barter.auto_balance_cash(this.trade, buyer, shop_data, customer);
+		this.render(true);
+	}
+
+	_on_add_order_item(event, target) {
+		event.preventDefault();
+		const path = target.dataset.path;
+		const shop_data = this._current_shop_data || this.shop_data;
+		if (!path || !this.buyer) {
+			return;
+		}
+		if (!catalog.can_add_order_item(this.catalog_order, path, shop_data)) {
+			return;
+		}
+		this.catalog_order = catalog.add_order_item(this.catalog_order, path);
+		this.render(true);
+	}
+
+	_on_remove_order_item(event, target) {
+		event.preventDefault();
+		const path = target.dataset.path;
+		if (!path) {
+			return;
+		}
+		this.catalog_order = catalog.remove_order_item(this.catalog_order, path);
+		this.render(true);
+	}
+
+	_on_confirm_order(event, target) {
+		event.preventDefault();
+		const buyer = this.buyer;
+		if (!buyer) {
+			return;
+		}
+		const shop_data = this._current_shop_data || this.shop_data;
+		const check = catalog.validate_order(this.catalog_order, buyer, shop_data);
+		if (!check.ok) {
+			const key = check.error ? `dc.shop.errors.${check.error}` : "dc.shop.errors.unavailable";
+			ui.notifications.warn(game.i18n.localize(key));
+			return;
+		}
+		void shop.request_order({
+			shop_id: this.shop_id,
+			scene_id: this.scene_id,
+			buyer_id: buyer.id,
+			order: foundry.utils.deepClone(this.catalog_order),
+			user_id: game.user.id
+		});
+	}
+
+	_on_clear_order() {
+		this.catalog_order = catalog.clear_order();
 		this.render(true);
 	}
 

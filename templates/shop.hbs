@@ -5,6 +5,7 @@
   <div class="center dc-header">{{shop_name}}</div>
 
   {{#if has_buyer}}
+  {{#unless is_catalog}}
   <div class="shop-buyer-row flexrow">
     <label>{{localize "dc.shop.buyer"}}</label>
     <select class="shop-buyer-select">
@@ -22,11 +23,15 @@
       {{localize "dc.shop.haggle"}} (TN {{haggle_tn}})
     </button>
   </div>
+  {{/unless}}
   {{else}}
   <p class="center">{{localize "dc.shop.errors.no_buyer"}}</p>
   {{/if}}
 
   {{#if has_buyer}}
+  {{#if is_catalog}}
+  {{> "modules/dc-s-n-r/templates/partials/shop_catalog.hbs"}}
+  {{else}}
   <div class="shop-barter-row flexrow">
     {{> "modules/dc-s-n-r/templates/partials/shop_barter_column.hbs"
       header_key="dc.shop.player"
@@ -44,6 +49,7 @@
       side="merchant"
       scroll_id="shop-merchant"}}
   </div>
+  {{/if}}
   {{/if}}
 
   <div class="center shop-barter-actions">

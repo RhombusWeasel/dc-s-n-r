@@ -11,6 +11,7 @@ const DEFAULT_SHOP = {
 	enabled: true,
 	haggle_tn: 5,
 	sell_ratio: 0.5,
+	trade_mode: "trade",
 	enable_cash: true,
 	cash: -1,
 	stock: {},
@@ -32,15 +33,38 @@ function parse_sell_ratio(value) {
 	return Number.isFinite(n) ? n : 0.5;
 }
 
+function resolve_trade_mode(shop = {}) {
+	if (shop.trade_mode === "trade" || shop.trade_mode === "barter" || shop.trade_mode === "catalog") {
+		return shop.trade_mode;
+	}
+	if (shop.enable_cash === false) {
+		return "barter";
+	}
+	return "trade";
+}
+
 function normalize_shop(shop = {}) {
+	const trade_mode = resolve_trade_mode(shop);
 	return {
 		enabled: shop.enabled ?? true,
 		haggle_tn: shop.haggle_tn ?? 5,
 		sell_ratio: parse_sell_ratio(shop.sell_ratio),
-		enable_cash: shop.enable_cash ?? true,
+		trade_mode,
+		enable_cash: trade_mode === "trade",
 		cash: shop.cash ?? -1,
 		stock: shop.stock ? { ...shop.stock } : {},
 	};
+}
+
+function shop_data_from_boon(boon = {}) {
+	return normalize_shop({
+		haggle_tn: boon.haggle_tn,
+		sell_ratio: boon.sell_ratio,
+		trade_mode: boon.trade_mode,
+		enable_cash: boon.enable_cash,
+		cash: boon.cash,
+		stock: boon.stock,
+	});
 }
 
 function get_stock_entry(shop, path) {
@@ -166,11 +190,12 @@ function build_streetwise_formula(buyer) {
 		return null;
 	}
 	if (sk.value === 0) {
-		const revised = game.settings.get("Deadlands-Classic", "updated_unskilled_checks");
-		if (revised) {
-			return `1d${trait.sides}ex - 4`;
+		const unskilled_ctx = { trait_value: trait.value || 1 };
+		game.dc.flow.run_sync('roll.unskilled', unskilled_ctx);
+		if (unskilled_ctx.dice_from_trait) {
+			return `${trait.value}d${trait.sides}ex - 4`;
 		}
-		return `${trait.value}d${trait.sides}ex - 4`;
+		return `1d${trait.sides}ex - 4`;
 	}
 	return `${sk.value}d${trait.sides}ex + ${sk.mod + trait.mod}`;
 }
@@ -245,6 +270,11 @@ function handle_socket(payload, options = {}) {
 		return;
 	}
 
+	if (operation === "order_result") {
+		handle_order_result(data);
+		return;
+	}
+
 	if (!game.user.isGM) {
 		return;
 	}
@@ -258,6 +288,12 @@ function handle_socket(payload, options = {}) {
 				return;
 			}
 			void apply_trade_request(data);
+			break;
+		case "order":
+			if (senderId === game.user.id && !options.local) {
+				return;
+			}
+			void apply_order_request(data);
 			break;
 		case "haggle":
 			if (!options.local && senderId === game.user.id) {
@@ -322,13 +358,7 @@ async function handle_request_shop_data(data) {
 	if (!resolved?.boon) return;
 	const boon = resolved.boon;
 
-	const shop = normalize_shop({
-		haggle_tn: boon.haggle_tn,
-		sell_ratio: boon.sell_ratio,
-		enable_cash: boon.enable_cash,
-		cash: boon.cash,
-		stock: boon.stock,
-	});
+	const shop = shop_data_from_boon(boon);
 
 	if (!has_stock(shop)) return;
 
@@ -405,24 +435,134 @@ async function update_boon_stock(shop_id, update_fn) {
 	});
 }
 
-// ─── Purchase ──────────────────────────────────────────────────────────────
+// ─── Catalog order ─────────────────────────────────────────────────────────
 
-function build_purchase(buyer, shop_data, path, customer) {
-	if (!has_stock(shop_data)) {
-		return { ok: false, error: "no_shop" };
+async function apply_order(buyer_id, shop_id, scene_id, order, user_id) {
+	if (!buyer_owned_by_user(buyer_id, user_id)) {
+		return { ok: false, error: "missing_actor" };
 	}
-	if (!is_for_sale(shop_data, path)) {
-		return { ok: false, error: "unavailable" };
+
+	const buyer = game.actors.get(buyer_id);
+	if (!buyer) {
+		return { ok: false, error: "missing_actor" };
 	}
-	const item = get_catalog_item(path);
-	if (!item) {
-		return { ok: false, error: "no_item" };
+
+	const scene = game.scenes.get(scene_id);
+	if (!scene) {
+		return { ok: false, error: "missing_scene" };
 	}
-	const price = calc_price(item.cost, customer);
-	if ((buyer.system.char.cash ?? 0) < price) {
-		return { ok: false, error: "insufficient_cash" };
+
+	const resolved = await resolve_shop_boon(shop_id);
+	if (!resolved?.boon) {
+		return { ok: false, error: "missing_shop" };
 	}
-	return { ok: true, path, price, customer, item, shop_data };
+
+	const shop_data = shop_data_from_boon(resolved.boon);
+	const { catalog } = await import("./catalog.js");
+	const check = catalog.validate_order(order, buyer, shop_data);
+	if (!check.ok) {
+		return check;
+	}
+
+	const normalized = check.order;
+	const paths_before = new Set(game.dc.act.items.list_equipment_paths(buyer));
+
+	await update_boon_stock(shop_id, (stock) => {
+		for (const [path, pieces] of Object.entries(normalized.items)) {
+			if (pieces <= 0) {
+				continue;
+			}
+			const item = get_catalog_item(path);
+			const unit_qty = item?.quantity ?? 1;
+			const boxes = pieces / unit_qty;
+			barter.apply_stock_delta(stock, path, -boxes);
+		}
+	});
+
+	await game.dc.utils.save_actor(buyer, (system) => {
+		system.char.cash = (system.char.cash ?? 0) - check.total;
+		for (const [path, pieces] of Object.entries(normalized.items)) {
+			if (pieces <= 0) {
+				continue;
+			}
+			game.dc.act.items.modify({ system }, path, pieces);
+		}
+	});
+
+	for (const path of Object.keys(normalized.items)) {
+		if (paths_before.has(path)) {
+			continue;
+		}
+		const added = game.dc.utils.data_from_path(buyer.system.char.gear, path);
+		if (added?.boons) {
+			const ctx = game.dc.trigger_manager.create_context("immediate", { actor: buyer });
+			game.dc.trigger_manager.fire_from_source(added, "immediate", ctx);
+			await game.dc.trigger_manager.persist_updates(buyer, ctx);
+		}
+	}
+
+	return { ok: true };
+}
+
+function notify_order_client(user_id, shop_id, ok, error = null) {
+	game.socket.emit(SOCKET_CHANNEL, {
+		event: "shop",
+		operation: "order_result",
+		data: { user_id, shop_id, ok, error }
+	});
+}
+
+function handle_order_result(data) {
+	if (data.user_id !== game.user.id) {
+		return;
+	}
+	if (!data.ok) {
+		const key = data.error ? `dc.shop.errors.${data.error}` : "dc.shop.errors.unavailable";
+		ui.notifications.warn(game.i18n.localize(key));
+		return;
+	}
+	ui.notifications.info(game.i18n.localize("dc.shop.order_ok"));
+	if (!game.user.isGM) {
+		const sheet = _open_sheet;
+		if (sheet && sheet.shop_id) {
+			emit_request_shop_data(sheet.shop_id, sheet.buyer_id, sheet.scene_id);
+		}
+	}
+	refresh_open_shop_sheet(data.shop_id);
+}
+
+async function apply_order_request(data) {
+	if (!game.user.isGM) {
+		return { ok: false, error: "missing_actor" };
+	}
+	const result = await apply_order(
+		data.buyer_id,
+		data.shop_id,
+		data.scene_id,
+		data.order,
+		data.user_id
+	);
+	if (result.ok) {
+		refresh_open_shop_sheet(data.shop_id);
+	}
+	notify_order_client(data.user_id, data.shop_id, result.ok, result.error ?? null);
+	if (data.user_id === game.user.id) {
+		handle_order_result({
+			user_id: data.user_id,
+			shop_id: data.shop_id,
+			ok: result.ok,
+			error: result.error ?? null
+		});
+	}
+	return result;
+}
+
+function request_order(data) {
+	const payload = { event: "shop", operation: "order", data, senderId: game.user.id };
+	game.socket.emit(SOCKET_CHANNEL, payload);
+	if (game.user.isGM) {
+		void apply_order_request(data);
+	}
 }
 
 // ─── Haggle ─────────────────────────────────────────────────────────────────
@@ -476,6 +616,9 @@ function refresh_open_shop_sheet(shop_id) {
 		return;
 	}
 	sheet.trade = barter.empty_trade();
+	if (sheet.catalog_order) {
+		sheet.catalog_order = { items: {} };
+	}
 	sheet.render(true);
 }
 
@@ -577,7 +720,9 @@ function get_open_sheet() {
 const shop = {
 	DEFAULT_SHOP,
 	parse_sell_ratio,
+	resolve_trade_mode,
 	normalize_shop,
+	shop_data_from_boon,
 	get_supply,
 	is_for_sale,
 	has_stock,
@@ -593,7 +738,7 @@ const shop = {
 	build_player_catalog,
 	get_owned_characters,
 	buyer_owned_by_user,
-	build_purchase,
+	request_order,
 	apply_haggle_update,
 	update_boon_stock,
 	request_trade,

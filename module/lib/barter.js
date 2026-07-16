@@ -378,13 +378,7 @@ async function apply_trade(buyer_id, shop_id, scene_id, trade) {
 	}
 	const boon = resolved.boon;
 
-	const shop_data = shop.normalize_shop({
-		haggle_tn: boon.haggle_tn,
-		sell_ratio: boon.sell_ratio,
-		enable_cash: boon.enable_cash,
-		cash: boon.cash,
-		stock: boon.stock,
-	});
+	const shop_data = shop.shop_data_from_boon(boon);
 
 	const customer = await shop.get_customer(scene, shop_id, buyer_id);
 	const result = validate_trade(trade, buyer, shop_data, customer);
@@ -451,7 +445,8 @@ const barter = {
 	set_trade_cash,
 	auto_balance_cash,
 	validate_trade,
-	apply_trade
+	apply_trade,
+	apply_stock_delta
 };
 
 export { barter };

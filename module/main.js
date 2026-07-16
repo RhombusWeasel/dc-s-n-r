@@ -20,6 +20,7 @@ Hooks.once("init", () => {
 		"modules/dc-s-n-r/templates/shop.hbs",
 		"modules/dc-s-n-r/templates/partials/shop_barter_column.hbs",
 		"modules/dc-s-n-r/templates/partials/shop_barter_trade.hbs",
+		"modules/dc-s-n-r/templates/partials/shop_catalog.hbs",
 		"modules/dc-s-n-r/templates/partials/shop_category.hbs",
 	]);
 });
@@ -46,13 +47,7 @@ Hooks.once("dcReady", () => {
 		// GM broadcasts updated shop data to players with the sheet open
 		if (game.user.isGM) {
 			const shop_boon = boons.find(b => b.type === "open_shop");
-			const shop_data = shop.normalize_shop({
-				haggle_tn: shop_boon.haggle_tn,
-				sell_ratio: shop_boon.sell_ratio,
-				enable_cash: shop_boon.enable_cash,
-				cash: shop_boon.cash,
-				stock: shop_boon.stock,
-			});
+			const shop_data = shop.shop_data_from_boon(shop_boon);
 			if (shop.has_stock(shop_data)) {
 				game.socket.emit(SOCKET_CHANNEL, {
 					event: "shop",

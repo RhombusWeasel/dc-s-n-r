@@ -135,7 +135,56 @@
 
 .deadlands-classic .shop-catalog,
 .deadlands-classic .shop-catalog-gm {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.deadlands-classic .shop-catalog .scroll-container {
+	flex: 1;
+	min-height: 0;
+}
+
+.deadlands-classic .shop-catalog-scroll {
 	max-height: 100%;
+}
+
+.deadlands-classic .shop-catalog-cash {
+	margin-bottom: 0.5rem;
+}
+
+.deadlands-classic .shop-catalog-table {
+	width: 100%;
+	margin-bottom: 0.75rem;
+}
+
+.deadlands-classic .shop-catalog-table .buy-catalog-item,
+.deadlands-classic .shop-catalog-table .remove-order-item {
+	cursor: pointer;
+}
+
+.deadlands-classic .shop-catalog-order {
+	margin-top: 0.5rem;
+	padding-top: 0.5rem;
+	border-top: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.deadlands-classic .shop-catalog-order-table {
+	width: 100%;
+	margin-bottom: 0.35rem;
+}
+
+.deadlands-classic .shop-catalog-order-total {
+	margin-bottom: 0.5rem;
+	font-weight: bold;
+}
+
+.deadlands-classic .shop-catalog-order-actions {
+	display: flex;
+	gap: 0.5rem;
+	justify-content: center;
+	flex-wrap: wrap;
 }
 
 /* Shop stock field type in boon editor */
