@@ -52,6 +52,7 @@ export default async function open_shop_boon(boon, context) {
 // ─── Registration ─────────────────────────────────────────────────────────
 
 function register_boons() {
+	game.dc.register_localization("dc.boons.open_shop", "Open Shop");
 	game.dc.boon_manager.register_boon_type("open_shop", open_shop_boon);
 
 	const triggers = game.dc.system.triggers;
